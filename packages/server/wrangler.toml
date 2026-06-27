@@ -1,0 +1,23 @@
+name = "one-more-shot-casino"
+main = "src/edge/worker.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Serve the built Vite client at the edge, with SPA fallback for client-side routes.
+[assets]
+directory = "../client/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+# One Durable Object instance per room (addressed by room code).
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "RoomDO"
+
+# SQLite-backed Durable Objects are available on the free Workers plan.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomDO"]
+
+[dev]
+port = 8787

@@ -1,0 +1,30 @@
+{
+  "name": "one-more-shot-casino",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n worker,client -c cyan,magenta \"npm:dev:worker\" \"npm:dev:client\"",
+    "dev:worker": "npm run dev --workspace=@lcc/server",
+    "dev:client": "npm run dev --workspace=@lcc/client",
+    "build": "npm run build --workspace=@lcc/client",
+    "typecheck": "tsc --noEmit -p packages/shared && tsc --noEmit -p packages/server && tsc --noEmit -p packages/server/tsconfig.edge.json && tsc --noEmit -p packages/client",
+    "deploy": "npm run build && npm run deploy --workspace=@lcc/server",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "concurrently": "^9.1.0",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.0.5"
+  }
+}

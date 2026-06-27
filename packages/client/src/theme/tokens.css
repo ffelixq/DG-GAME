@@ -1,0 +1,126 @@
+/* One More Shot Casino — neon nightclub theme tokens. */
+:root {
+  /* core palette */
+  --lcc-bg: #0b0014;
+  --lcc-bg-elev: #160a2a;
+  --lcc-bg-card: #1d0f37;
+  --lcc-hot: #ff2d95; /* hot pink */
+  --lcc-cyan: #15f4ee; /* cyan */
+  --lcc-purple: #9b5cff;
+  --lcc-gold: #ffd23f;
+  --lcc-danger: #ff4d4d;
+  --lcc-good: #2dffb0;
+  --lcc-ink: #f4ecff;
+  --lcc-ink-dim: #b9a8d8;
+
+  /* glow */
+  --lcc-glow-hot: 0 0 16px rgba(255, 45, 149, 0.55);
+  --lcc-glow-cyan: 0 0 16px rgba(21, 244, 238, 0.45);
+
+  /* type */
+  --lcc-font-display: 'Bungee', 'Arial Black', system-ui, sans-serif;
+  --lcc-font-body: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* spacing / radius */
+  --lcc-tap: 56px;
+  --lcc-radius: 16px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  min-height: 100dvh;
+}
+
+body {
+  background: var(--lcc-bg);
+  color: var(--lcc-ink);
+  font-family: var(--lcc-font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* animated neon ambience behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40vw 40vw at 18% 12%, rgba(255, 45, 149, 0.16), transparent 60%),
+    radial-gradient(45vw 45vw at 85% 18%, rgba(21, 244, 238, 0.13), transparent 60%),
+    radial-gradient(38vw 38vw at 75% 78%, rgba(255, 170, 60, 0.14), transparent 60%),
+    radial-gradient(50vw 50vw at 50% 100%, rgba(155, 92, 255, 0.18), transparent 60%);
+  animation: lcc-ambience 22s ease-in-out infinite alternate;
+}
+@keyframes lcc-ambience {
+  from {
+    transform: translate3d(-3%, -2%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 3%, 0) scale(1.15);
+  }
+}
+
+::selection {
+  background: var(--lcc-hot);
+  color: #fff;
+}
+
+/* slim neon scrollbar */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(155, 92, 255, 0.5);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+}
+
+.lcc-splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 100dvh;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.lcc-logo {
+  margin: 0;
+  font-family: var(--lcc-font-display);
+  font-size: clamp(2rem, 8vw, 4.5rem);
+  letter-spacing: 0.04em;
+  color: var(--lcc-hot);
+  text-shadow: var(--lcc-glow-hot);
+}
+
+.lcc-tagline {
+  margin: 0;
+  color: var(--lcc-cyan);
+  text-shadow: var(--lcc-glow-cyan);
+  font-weight: 700;
+}
+
+.lcc-hint {
+  margin-top: 1rem;
+  color: var(--lcc-ink-dim);
+  font-size: 0.9rem;
+}
