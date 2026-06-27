@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FLOOR_INTRO_MS, GAME_REVEAL_MS, STARTING_BANK, asDeviceId, type SeatId } from '@lcc/shared';
+import { BANK_TOPUP_AMOUNT, FLOOR_INTRO_MS, GAME_REVEAL_MS, STARTING_BANK, asDeviceId, type SeatId } from '@lcc/shared';
 import { FakeClock } from '../runtime/Clock';
 import { SeqIdGen } from '../runtime/IdGen';
 import { RoomManager } from '../rooms/RoomManager';
@@ -106,6 +106,28 @@ describe('play: blackjack through the reducer', () => {
     expect(second).not.toBeNull();
     expect(second).not.toBe(first);
     expect(room.state.sessions[second!]!.settled).toBe(false);
+  });
+
+  it('drink-to-top-up: when the bank is dry a seat drinks to refill it, then it is blocked once solvent', () => {
+    const { room, pa, a } = playingRoom();
+    room.state.bank.balance = 10; // dry (below floor-1 min bet of $50)
+    const before = room.state.seats[a]!.tokenIds.length;
+    const r = room.dispatch({ t: 'topUpBank', deviceId: pa, seatId: a });
+    expect(r.ok).toBe(true);
+    expect(room.state.bank.balance).toBe(10 + BANK_TOPUP_AMOUNT);
+    expect(room.state.seats[a]!.tokenIds.length).toBe(before + 1); // picked up a drink token
+    // now solvent -> further top-ups are rejected
+    expect(room.dispatch({ t: 'topUpBank', deviceId: pa, seatId: a }).ok).toBe(false);
+  });
+
+  it('drink-to-top-up still refills the bank for an exempt seat but mints water, not alcohol (safety)', () => {
+    const { room, pa, a } = playingRoom();
+    room.state.bank.balance = 0;
+    room.state.seats[a]!.exempt = true;
+    expect(room.dispatch({ t: 'topUpBank', deviceId: pa, seatId: a }).ok).toBe(true);
+    expect(room.state.bank.balance).toBe(BANK_TOPUP_AMOUNT);
+    const tokens = room.state.seats[a]!.tokenIds.map((id) => room.state.tokens[id]!);
+    expect(tokens.some((t) => t.kind === 'alcohol')).toBe(false);
   });
 
   it('"Go back" dismisses the result reveal immediately (no waiting for the timer)', () => {

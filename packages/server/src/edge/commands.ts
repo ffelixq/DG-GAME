@@ -33,6 +33,8 @@ export function commandForEvent(ev: keyof ClientToServerEvents, p: any, deviceId
       return { t: 'gameAction', deviceId, seatId: p.seatId, action: p.action };
     case 'game:dismiss':
       return { t: 'dismissReveal', deviceId, seatId: p.seatId };
+    case 'bank:topUp':
+      return { t: 'topUpBank', deviceId, seatId: p.seatId };
     case 'item:use':
       return { t: 'useItem', deviceId, seatId: p.seatId, instanceId: p.instanceId, targetSeatId: p.targetSeatId };
     case 'drinkCheck:resolve':

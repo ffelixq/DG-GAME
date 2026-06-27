@@ -106,7 +106,7 @@ function BoardLobby({ pub }: { pub: PublicRoomView }) {
           <QRCodeSVG value={joinUrl} size={170} />
         </div>
         <p className="muted">Scan, or open the site and enter the code.</p>
-        <Roster seats={pub.seats} />
+        <Roster seats={pub.seats} onKick={isHost ? (id) => act('seat:remove', { seatId: id }) : undefined} />
         <div className="row" style={{ justifyContent: 'center' }}>
           <button className="btn btn--ghost" onClick={() => act('seat:addBot', {})}>
             🤖 Add a bot

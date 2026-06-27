@@ -29,6 +29,7 @@ export type Command =
   | { t: 'startGame'; deviceId: DeviceId; seatId: SeatId; kind: GameKind; bet: Money; selection?: BetSelection }
   | { t: 'gameAction'; deviceId: DeviceId; seatId: SeatId; action: GameAction }
   | { t: 'dismissReveal'; deviceId: DeviceId; seatId: SeatId }
+  | { t: 'topUpBank'; deviceId: DeviceId; seatId: SeatId }
   | { t: 'useItem'; deviceId: DeviceId; seatId: SeatId; instanceId: ItemInstanceId; targetSeatId?: SeatId }
   | { t: 'resolveDrinkCheck'; deviceId: DeviceId; seatId: SeatId; resolutions: { tokenId: TokenId; as: TokenKind }[] }
   | { t: 'skipDrinkCheck'; deviceId: DeviceId; seatId: SeatId }

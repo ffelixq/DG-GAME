@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { GAME_NAMES, type BetSelection, type GameKind, type PublicRoomView, type SeatId } from '@lcc/shared';
+import { BANK_TOPUP_AMOUNT, GAME_NAMES, type BetSelection, type GameKind, type PublicRoomView, type SeatId } from '@lcc/shared';
 import { useConn } from '../../net/connection';
 import { GAME_ICON } from '../../ui/gameMeta';
 
 export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomView }) {
-  const { call } = useConn();
+  const { call, act } = useConn();
   const available = pub.bank - pub.reserved;
   const [kind, setKind] = useState<GameKind>(pub.games[0] ?? 'blackjack');
   const [bet, setBet] = useState<number>(Math.min(pub.bets.min, available));
@@ -17,9 +17,18 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
   const [busy, setBusy] = useState(false);
 
   const isPoker = kind === 'poker3';
-  const minNeeded = isPoker ? pub.bets.pokerAnte : pub.bets.min;
-  if (available < minNeeded) {
-    return <p className="muted">The bank is too low to bet right now (${available}). Wait for a teammate to win.</p>;
+  if (available < pub.bets.min) {
+    // Bank's dry — the only way on is to drink to top it up.
+    return (
+      <div className="card stack" style={{ textAlign: 'center', borderColor: 'var(--lcc-gold)' }}>
+        <h2 className="h2">🍺 The bank's dry!</h2>
+        <p className="muted">Only ${available.toLocaleString()} left — not enough to bet. Take a drink to put ${BANK_TOPUP_AMOUNT.toLocaleString()} back in the bank and keep the night going.</p>
+        <button className="btn btn--primary btn--lg btn--block" onClick={() => act('bank:topUp', { seatId })}>
+          🍺 Drink to top up — +${BANK_TOPUP_AMOUNT.toLocaleString()}
+        </button>
+        <p className="muted" style={{ fontSize: '0.75rem' }}>(You'll pick up a drink token — swap it for water or sit out at the next Drink Check if you need to.)</p>
+      </div>
+    );
   }
 
   const chips = Array.from(

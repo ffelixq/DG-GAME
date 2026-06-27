@@ -1,5 +1,7 @@
 import {
+  BANK_TOPUP_AMOUNT,
   FINAL_FLOOR,
+  FLOOR_BY_INDEX,
   FLOOR_INTRO_MS,
   MAX_SEATS,
   err,
@@ -14,6 +16,8 @@ import {
 import type { Command } from './commands';
 import type { SideEffect } from './side-effects';
 import type { IdGen } from '../runtime/IdGen';
+import { adjust, available } from './bank';
+import { mint } from './tokens';
 import { addTicker, enterPlaying, ensureDevice, makeFloorRuntime, makeSeat, nameTaken, nextAccentIndex, resetForReplay } from './state';
 import { allSeatDevicesAcked, hasHuman, hasMinSeats, shiftDeadlines } from './machine';
 import { addBot, botTick } from './bots';
@@ -130,10 +134,14 @@ function apply(state: RoomState, cmd: Command, ctx: ReduceCtx, effects: SideEffe
     }
 
     case 'removeSeat': {
-      if (!ownsSeat(state, cmd.deviceId, cmd.seatId)) return err('NOT_SEAT_OWNER', 'Not your seat.');
-      if (state.phase !== 'lobby') return err('WRONG_PHASE', 'Can’t leave mid-game.');
-      const dev = state.devices[cmd.deviceId]!;
-      dev.ownedSeatIds = dev.ownedSeatIds.filter((s) => s !== cmd.seatId);
+      // owner can remove their own seat; the host can kick anyone (players or bots)
+      const isHost = state.hostDeviceId === cmd.deviceId;
+      if (!ownsSeat(state, cmd.deviceId, cmd.seatId) && !isHost) return err('NOT_SEAT_OWNER', 'Only the host can remove other players.');
+      if (state.phase !== 'lobby') return err('WRONG_PHASE', 'Players can only be removed in the lobby.');
+      const seat = state.seats[cmd.seatId];
+      if (!seat) return err('NOT_FOUND', 'No such seat.');
+      const ownerDev = state.devices[seat.deviceId];
+      if (ownerDev) ownerDev.ownedSeatIds = ownerDev.ownedSeatIds.filter((s) => s !== cmd.seatId);
       state.seatOrder = state.seatOrder.filter((s) => s !== cmd.seatId);
       delete state.seats[cmd.seatId];
       out.changed = true;
@@ -254,6 +262,23 @@ function apply(state: RoomState, cmd: Command, ctx: ReduceCtx, effects: SideEffe
       const r = applyGameAction(state, cmd.deviceId, cmd.seatId, cmd.action, ctx);
       if (r.ok) out.changed = true;
       return r;
+    }
+
+    case 'topUpBank': {
+      if (!ownsSeat(state, cmd.deviceId, cmd.seatId)) return err('NOT_SEAT_OWNER', 'Not your seat.');
+      if (state.phase !== 'playing') return err('WRONG_PHASE', 'You can only top up during a round.');
+      if (state.paused) return err('PAUSED', 'The game is paused.');
+      const seat = state.seats[cmd.seatId];
+      if (!seat) return err('NOT_FOUND', 'No such seat.');
+      const minBet = FLOOR_BY_INDEX[state.currentFloor].minBet;
+      if (available(state.bank) >= minBet) return err('BAD_REQUEST', 'The bank still has money to bet.');
+      // Drink to top up: one alcohol token (coerced to water for exempt seats by the chokepoint),
+      // and a cash injection into the shared bank so the night can continue.
+      mint(state, { ownerSeatId: cmd.seatId, originSeatId: 'system', count: 1, kind: 'alcohol', source: 'punishment', reason: 'bank.topup' }, ctx);
+      adjust(state.bank, BANK_TOPUP_AMOUNT, 'TOPUP', cmd.seatId, ctx.now);
+      addTicker(state, `${seat.name} drank to top up the bank (+$${BANK_TOPUP_AMOUNT.toLocaleString()}) 🍺💰`, 'event', ctx.now);
+      out.changed = true;
+      return ok({});
     }
 
     case 'dismissReveal': {

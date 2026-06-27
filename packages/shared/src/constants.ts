@@ -16,6 +16,9 @@ export const MAX_SEATS = 8;
 /** Shared bank the table starts the night with (fake dollars). */
 export const STARTING_BANK = 1000;
 
+/** When the bank is dry, a player can "drink to top up": one drink → this much cash into the bank. */
+export const BANK_TOPUP_AMOUNT = 1000;
+
 /** Number of distinct seat accent colours the UI cycles through. */
 export const SEAT_ACCENT_COUNT = 8;
 

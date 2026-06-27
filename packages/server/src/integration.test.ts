@@ -86,4 +86,31 @@ describe('integration: onboarding + privacy + authz (Room/command path)', () => 
     expect(bad.ok).toBe(false);
     expect((bad as { code: string }).code).toBe('NOT_SEAT_OWNER');
   });
+
+  it('the host can kick any seat (player or bot); a non-host cannot', () => {
+    const { manager } = setup();
+    const host = asDeviceId('h3');
+    const pa = asDeviceId('pa3');
+    const pb = asDeviceId('pb3');
+    const room = manager.create(host);
+    room.dispatch({ t: 'attachDevice', deviceId: host, socketId: 'h' });
+    room.dispatch({ t: 'setBigScreen', deviceId: host, value: true });
+    room.dispatch({ t: 'attachDevice', deviceId: pa, socketId: 'a' });
+    const alex = room.dispatch({ t: 'addSeat', deviceId: pa, name: 'Alex' }) as { ok: true; data: { seatId: SeatId } };
+    room.dispatch({ t: 'attachDevice', deviceId: pb, socketId: 'b' });
+    room.dispatch({ t: 'addSeat', deviceId: pb, name: 'Sam' });
+    room.dispatch({ t: 'addBot', deviceId: host });
+    expect(room.state.seatOrder.length).toBe(3);
+
+    // a non-host can't kick someone else's seat
+    expect(room.dispatch({ t: 'removeSeat', deviceId: pb, seatId: alex.data.seatId }).ok).toBe(false);
+
+    // the host can kick a player and a bot
+    expect(room.dispatch({ t: 'removeSeat', deviceId: host, seatId: alex.data.seatId }).ok).toBe(true);
+    const botSeat = room.state.seatOrder.find((id) => room.state.seats[id]!.isBot)!;
+    expect(room.dispatch({ t: 'removeSeat', deviceId: host, seatId: botSeat }).ok).toBe(true);
+
+    expect(room.state.seatOrder.length).toBe(1); // only Sam remains
+    expect(room.state.devices[pa]!.ownedSeatIds).toHaveLength(0); // Alex's owner no longer references it
+  });
 });

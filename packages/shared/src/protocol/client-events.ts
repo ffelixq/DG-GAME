@@ -92,6 +92,10 @@ export interface PausePayload {
   value: boolean;
 }
 
+export interface TopUpPayload {
+  seatId: SeatId;
+}
+
 // Socket.io client->server map. Every event carries an ack returning Result<...>.
 export interface ClientToServerEvents {
   'session:hello': (p: HelloPayload, ack: Ack<HelloResult>) => void;
@@ -106,6 +110,7 @@ export interface ClientToServerEvents {
   'game:start': (p: StartGamePayload, ack: Ack<StartGameResult>) => void;
   'game:action': (p: GameActionPayload, ack: Ack<Record<string, never>>) => void;
   'game:dismiss': (p: DismissPayload, ack: Ack<Record<string, never>>) => void;
+  'bank:topUp': (p: TopUpPayload, ack: Ack<Record<string, never>>) => void;
   'item:use': (p: UseItemPayload, ack: Ack<Record<string, never>>) => void;
   'drinkCheck:resolve': (p: DrinkCheckResolvePayload, ack: Ack<Record<string, never>>) => void;
   'drinkCheck:skip': (p: DrinkCheckSkipPayload, ack: Ack<Record<string, never>>) => void;

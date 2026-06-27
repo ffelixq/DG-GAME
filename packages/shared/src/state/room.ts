@@ -74,7 +74,7 @@ export interface SeatState {
   lastGame: { summary: ResultSummary; at: number } | null;
 }
 
-export type BankReason = 'BET' | 'PAYOUT' | 'EVENT' | 'ITEM' | 'PUNISHMENT';
+export type BankReason = 'BET' | 'PAYOUT' | 'EVENT' | 'ITEM' | 'PUNISHMENT' | 'TOPUP';
 
 export interface BankEntry {
   id: string;

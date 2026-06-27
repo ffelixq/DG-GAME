@@ -7,10 +7,13 @@ export function Roster({
   seats,
   showTokens = false,
   youSeatIds = [],
+  onKick,
 }: {
   seats: PublicSeatView[];
   showTokens?: boolean;
   youSeatIds?: SeatId[];
+  /** When provided (host only), shows a kick ✕ on every seat except your own. */
+  onKick?: (seatId: SeatId) => void;
 }) {
   if (seats.length === 0) return <p className="muted">No players yet…</p>;
   return (
@@ -26,6 +29,11 @@ export function Roster({
           {s.isHost && <span className="badge" title="host">★</span>}
           {youSeatIds.includes(s.seatId) && <span className="badge">you</span>}
           {showTokens && <TokenPills counts={s.tokenCounts} />}
+          {onKick && !youSeatIds.includes(s.seatId) && (
+            <button className="seat-kick" title={`Remove ${s.name}`} onClick={() => onKick(s.seatId)}>
+              ✕
+            </button>
+          )}
         </div>
       ))}
     </div>

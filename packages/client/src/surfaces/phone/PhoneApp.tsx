@@ -99,7 +99,11 @@ function PhoneLobby({ pub }: { pub: PublicRoomView }) {
           <h2 className="h2">At the table</h2>
           <span className="muted">{pub.seats.length} playing</span>
         </div>
-        <Roster seats={pub.seats} youSeatIds={mySeats.map((s) => s.seatId)} />
+        <Roster
+          seats={pub.seats}
+          youSeatIds={mySeats.map((s) => s.seatId)}
+          onKick={isHost ? (id) => act('seat:remove', { seatId: id }) : undefined}
+        />
       </div>
 
       <div className="card stack">
