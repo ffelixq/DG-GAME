@@ -29,11 +29,26 @@ function Body() {
   return <Onboarding />;
 }
 
+function LeaveButton() {
+  const { reset } = useConn();
+  return (
+    <button
+      className="leave-btn"
+      onClick={() => {
+        if (window.confirm('Leave this room and go back to the start?')) reset();
+      }}
+    >
+      ← Leave
+    </button>
+  );
+}
+
 export function App() {
-  const { connected } = useConn();
+  const { connected, joined } = useConn();
   return (
     <div className="app-shell">
       {!connected && <div className="conn-banner">Reconnecting…</div>}
+      {joined && <LeaveButton />}
       <Body />
       <Toasts />
     </div>

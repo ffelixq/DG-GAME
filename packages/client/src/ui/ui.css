@@ -20,6 +20,29 @@
   color: #fff;
 }
 
+/* always-available "leave room" affordance */
+.leave-btn {
+  position: fixed;
+  top: max(0.6rem, env(safe-area-inset-top));
+  left: 0.6rem;
+  z-index: 55;
+  background: rgba(20, 10, 38, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(244, 236, 255, 0.28);
+  color: var(--lcc-ink);
+  font-family: var(--lcc-font-body);
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.leave-btn:hover {
+  filter: brightness(1.2);
+}
+
 /* phone-first centered column */
 .screen {
   flex: 1;
