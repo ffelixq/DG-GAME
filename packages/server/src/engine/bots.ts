@@ -3,6 +3,7 @@ import {
   BOT_THINK_MS,
   FLOOR_BY_INDEX,
   MAX_SEATS,
+  TURN_TIMEOUT_MS,
   asDeviceId,
   err,
   ok,
@@ -17,7 +18,7 @@ import { addTicker, makeSeat, nextAccentIndex } from './state';
 import { removeTokens } from './tokens';
 import { skipDrinkCheck } from './drink';
 import { resolveChoice } from './effects-runtime';
-import { findOpenPoker, holdemBotDecision, pokerAct, startOrJoinPoker, type PokerData } from './poker';
+import { findOpenPoker, pokerAct, pokerBotAction, startOrJoinPoker, type PokerData } from './poker';
 import {
   blackjackAct,
   blackjackBotAction,
@@ -104,9 +105,9 @@ export function botTick(state: RoomState, rctx: ReduceCtx): boolean {
       const session = state.sessions[seat.activeSessionId];
       if (session?.kind === 'poker3') {
         const data = session.data as PokerData;
-        const entry = data.entries.find((e) => e.seatId === sid);
-        if (data.phase === 'betting' && entry && !entry.folded && !entry.acted && rctx.now - data.streetStartedAt >= BOT_THINK_MS) {
-          pokerAct(state, BOT_DEVICE_ID, sid, { kind: holdemBotDecision(data, sid, rctx.rng) === 'play' ? 'play' : 'fold' }, rctx);
+        const turnStart = data.turnDeadline - TURN_TIMEOUT_MS;
+        if (data.phase === 'betting' && data.entries[data.turnIndex]?.seatId === sid && rctx.now - turnStart >= BOT_THINK_MS) {
+          pokerAct(state, BOT_DEVICE_ID, sid, pokerBotAction(data, sid, rctx.rng), rctx);
           changed = true;
         }
       } else if (session?.kind === 'blackjack') {

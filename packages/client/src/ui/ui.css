@@ -891,6 +891,66 @@
   border: 1px solid var(--lcc-good);
   box-shadow: 0 0 12px rgba(45, 255, 176, 0.35);
 }
+.showdown-row.loser {
+  border: 1px solid var(--lcc-danger);
+  box-shadow: 0 0 12px rgba(255, 77, 77, 0.35);
+}
+/* a player chip animating in when they join the table */
+.seat-pop {
+  animation: seat-pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes seat-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* "join the open table" call-to-action in the game picker */
+.join-tables {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.join-table-btn {
+  font-size: 1.05rem;
+}
+
+/* poker: drinks pot + turn banner */
+.poker-pot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-bottom: 0.4rem;
+}
+.poker-pot .pot-label {
+  font-family: var(--lcc-font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  color: var(--lcc-gold);
+}
+.poker-pot .pot-drinks {
+  font-size: 1.6rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 8px rgba(255, 210, 63, 0.5));
+}
+.poker-pot .pot-count {
+  font-size: 0.78rem;
+  color: var(--lcc-ink-dim);
+}
+.turn-banner {
+  text-align: center;
+  font-family: var(--lcc-font-display);
+  font-size: 1.05rem;
+  color: var(--lcc-hot);
+  text-shadow: var(--lcc-glow-hot);
+  animation: neon-pulse 1.6s ease-in-out infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -71,7 +71,7 @@ function playingWithBot() {
 }
 
 describe('bots: play', () => {
-  it('a bot joins the human’s Hold’em table and the hand plays to a result', () => {
+  it('a bot joins the human’s poker table and the betting plays to a result', () => {
     const { room, pa, a, clock } = playingWithBot();
     room.dispatch({ t: 'startGame', deviceId: pa, seatId: a, kind: 'poker3', bet: 0 });
     room.tick(); // bot joins during the join window
@@ -82,9 +82,10 @@ describe('bots: play', () => {
     clock.advance(POKER_JOIN_WINDOW_MS + 10);
     room.tick(); // -> preflop
 
-    // drive the hand: human stays each street, bot auto-acts after its think delay
-    for (let i = 0; i < 12 && room.state.seats[a]!.activeSessionId; i++) {
-      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'play' } });
+    // drive the hand: human checks/calls whenever it's their turn, bot auto-acts after its think delay
+    for (let i = 0; i < 60 && room.state.seats[a]!.activeSessionId; i++) {
+      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'check' } });
+      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'call' } });
       clock.advance(BOT_THINK_MS + 50);
       room.tick();
     }

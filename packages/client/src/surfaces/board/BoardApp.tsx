@@ -149,32 +149,47 @@ function ActiveGameLine({ pub, game }: { pub: PublicRoomView; game: ActiveGamePu
       return (
         <div className="active-game-card">
           <div className="spread">
-            <strong>♠️ Texas Hold'em</strong>
-            <span className="muted">{v.phase === 'joining' ? 'joining…' : STREET[v.street]} · pot ${v.pot}</span>
+            <strong>🃏 Poker</strong>
+            <span className="muted">
+              {v.phase === 'joining' ? 'players joining…' : STREET[v.street]} · pot {'🍺'.repeat(Math.min(v.pot, 5))} {v.pot}
+            </span>
           </div>
           {v.community.length > 0 && (
-            <div style={{ marginTop: '0.4rem' }}>
+            <div style={{ margin: '0.4rem 0' }}>
               <Hand cards={v.community} />
             </div>
           )}
-          <div className="muted" style={{ marginTop: '0.3rem' }}>{v.seatIds.map(seatName).join(', ')}</div>
+          <div className="showdown">
+            {v.players.map((p) => (
+              <div key={p.seatId} className={`showdown-row ${p.seatId === v.turnSeatId ? 'winner' : ''} ${p.folded ? 'muted' : ''} seat-pop`}>
+                <span>
+                  {p.seatId === v.turnSeatId ? '▶ ' : ''}
+                  {seatName(p.seatId)}
+                </span>
+                <span className="muted">{p.folded ? 'folded' : p.seatId === v.turnSeatId ? 'to act…' : 'in'}</span>
+              </div>
+            ))}
+          </div>
         </div>
       );
     }
     return (
       <div className="active-game-card">
         <div className="spread">
-          <strong>♠️ Hold'em Showdown</strong>
-          <span className="muted">pot ${v.pot}</span>
+          <strong>🃏 Poker — Showdown</strong>
+          <span className="muted">pot {'🍺'.repeat(Math.min(v.result.pot, 5))} {v.result.pot}</span>
         </div>
         <div style={{ margin: '0.4rem 0' }}>
           <Hand cards={v.result.community} />
         </div>
         <div className="showdown">
           {v.result.reveals.map((r) => (
-            <div key={r.seatId} className={`showdown-row reveal ${r.seatId === v.result!.winnerSeatId ? 'winner' : ''}`}>
+            <div
+              key={r.seatId}
+              className={`showdown-row reveal ${r.seatId === v.result!.winnerSeatId ? 'winner' : ''} ${r.seatId === v.result!.loserSeatId ? 'loser' : ''}`}
+            >
               <span>
-                {r.seatId === v.result!.winnerSeatId ? '🏆 ' : ''}
+                {r.seatId === v.result!.winnerSeatId ? '🏆 ' : r.seatId === v.result!.loserSeatId ? '🍺 ' : ''}
                 {seatName(r.seatId)} {r.folded && <span className="muted">(folded)</span>}
               </span>
               <Hand cards={r.cards} />

@@ -75,45 +75,51 @@ function playingRoom() {
   return { room, pa, a, b, clock };
 }
 
-describe("Hold'em table lifecycle", () => {
-  it('deals through flop/turn/river to a showdown; worst hand takes a token', () => {
+describe('Poker table betting lifecycle', () => {
+  it('runs bet/call/check rounds to a showdown; the worst hand drinks the pot of drinks', () => {
     const { room, pa, a, b, clock } = playingRoom();
     expect(room.dispatch({ t: 'startGame', deviceId: pa, seatId: a, kind: 'poker3', bet: 0 }).ok).toBe(true);
     expect(room.dispatch({ t: 'startGame', deviceId: pa, seatId: b, kind: 'poker3', bet: 0 }).ok).toBe(true);
 
-    // close join window -> preflop betting
+    // close join window -> preflop betting (a acts first)
     clock.advance(POKER_JOIN_WINDOW_MS + 10);
     room.tick();
 
-    // play out every street (preflop, flop, turn, river) for both seats
-    for (let street = 0; street < 4; street++) {
-      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'play' } });
-      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: b, action: { kind: 'play' } });
+    // out-of-turn action is rejected
+    expect(room.dispatch({ t: 'gameAction', deviceId: pa, seatId: b, action: { kind: 'check' } }).ok).toBe(false);
+
+    // preflop: a bets (+1 drink), b calls
+    expect(room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'bet' } }).ok).toBe(true);
+    expect(room.dispatch({ t: 'gameAction', deviceId: pa, seatId: b, action: { kind: 'call' } }).ok).toBe(true);
+    // flop, turn, river: both check
+    for (let street = 0; street < 3; street++) {
+      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'check' } });
+      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: b, action: { kind: 'check' } });
     }
 
-    expect(room.state.bank.reserved).toBe(0);
-    expect(room.state.seats[a]!.lastGame).not.toBeNull();
+    expect(room.state.bank.reserved).toBe(0); // poker never touches the bank
     const tokens = Object.values(room.state.tokens);
-    expect(tokens.length).toBeGreaterThanOrEqual(1);
+    expect(tokens.length).toBe(2); // ante(1) + one bet = 2 drinks, all on the loser
     expect(tokens.every((t) => t.kind === 'alcohol')).toBe(true);
+    const owners = new Set(tokens.map((t) => t.ownerSeatId));
+    expect(owners.size).toBe(1);
 
-    // showdown held, then cleared
     clock.advance(GAME_REVEAL_MS + 50);
     room.tick();
     expect(Object.keys(room.state.sessions)).toHaveLength(0);
     expect(room.state.seats[a]!.activeSessionId).toBeNull();
-    expect(room.state.seats[b]!.activeSessionId).toBeNull();
   });
 
-  it('a lone player wins when everyone else folds', () => {
+  it('a lone player wins when everyone else folds — nobody drinks', () => {
     const { room, pa, a, b, clock } = playingRoom();
     room.dispatch({ t: 'startGame', deviceId: pa, seatId: a, kind: 'poker3', bet: 0 });
     room.dispatch({ t: 'startGame', deviceId: pa, seatId: b, kind: 'poker3', bet: 0 });
     clock.advance(POKER_JOIN_WINDOW_MS + 10);
     room.tick();
-    room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'play' } });
+    room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'check' } });
     room.dispatch({ t: 'gameAction', deviceId: pa, seatId: b, action: { kind: 'fold' } });
     expect(room.state.seats[a]!.lastGame?.summary.won).toBe(true);
+    expect(Object.values(room.state.tokens).length).toBe(0);
     void TURN_TIMEOUT_MS;
   });
 });

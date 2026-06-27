@@ -117,7 +117,7 @@ function SeatTable({ seat, pub }: { seat: PrivateSeatView; pub: PublicRoomView }
         seat.activeGame.kind === 'blackjack' ? (
           <BlackjackControls seatId={seat.seatId} view={seat.activeGame} result={seat.lastResult} pub={pub} />
         ) : seat.activeGame.kind === 'poker3' ? (
-          <PokerControls seatId={seat.seatId} view={seat.activeGame} result={seat.lastResult} />
+          <PokerControls seatId={seat.seatId} view={seat.activeGame} result={seat.lastResult} pub={pub} />
         ) : (
           <SpinControls seatId={seat.seatId} view={seat.activeGame} result={seat.lastResult} />
         )

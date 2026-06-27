@@ -31,10 +31,14 @@ export type PublicGameView =
       phase: 'joining' | 'acting' | 'done';
       street: HoldemStreet;
       community: Card[];
-      ante: Money;
-      pot: Money;
+      pot: number; // drinks at stake
+      toCall: number; // current outstanding bet to call
+      turnSeatId: SeatId | null;
+      players: { seatId: SeatId; folded: boolean }[];
       result?: {
         winnerSeatId: SeatId | null;
+        loserSeatId: SeatId | null;
+        pot: number;
         community: Card[];
         reveals: { seatId: SeatId; handLabel: string; cards: Card[]; folded: boolean }[];
       };
@@ -81,13 +85,17 @@ export type PrivateGameView =
     }
   | {
       kind: 'poker3';
-      bet: Money;
       phase: 'joining' | 'acting' | 'done';
       street: HoldemStreet;
       hole: Card[];
       community: Card[];
       handLabel: string;
+      pot: number; // drinks at stake
+      toCall: number; // current outstanding bet to call (0 = you can check)
+      myTurn: boolean;
+      folded: boolean;
       legal: GameAction[];
+      others: { seatId: SeatId; folded: boolean }[];
       result?: ResultSummary;
     }
   | {

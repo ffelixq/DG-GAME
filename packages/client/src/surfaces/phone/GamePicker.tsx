@@ -36,6 +36,18 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
   );
   if (pub.bets.allowAllIn && available > pub.bets.max) chips.push(available);
 
+  // open multiplayer tables anyone can hop into
+  const openTables: { kind: GameKind; opener?: SeatId }[] = [];
+  for (const g of pub.activeGames) {
+    if (g.view.kind === 'poker3' && g.view.phase === 'joining') openTables.push({ kind: 'poker3', opener: g.view.seatIds[0] });
+    else if (g.view.kind === 'blackjack' && g.view.phase === 'joining') openTables.push({ kind: 'blackjack', opener: g.view.seats[0]?.seatId });
+  }
+  const openerName = (id?: SeatId) => pub.seats.find((s) => s.seatId === id)?.name ?? 'Someone';
+
+  function joinTable(k: GameKind) {
+    void call('game:start', { seatId, kind: k, bet: k === 'blackjack' ? pub.bets.min : 0, selection: undefined });
+  }
+
   function selection(): BetSelection | undefined {
     if (kind === 'roulette') return useNumber ? { kind: 'straightUp', number: num } : { kind: 'rb', color: rbColor };
     if (kind === 'diceDuel') return { kind: 'band', band };
@@ -46,7 +58,7 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
   async function start() {
     setBusy(true);
     setError(null);
-    const wager = isPoker ? pub.bets.pokerAnte : bet;
+    const wager = isPoker ? 0 : bet; // poker is drink-stakes — no money
     const r = await call<{ sessionId: string }>('game:start', { seatId, kind, bet: wager, selection: selection() });
     setBusy(false);
     if (!r.ok) setError(r.message);
@@ -54,6 +66,16 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
 
   return (
     <div className="stack">
+      {openTables.length > 0 && (
+        <div className="join-tables">
+          {openTables.map((t, i) => (
+            <button key={i} className="btn btn--cyan btn--block join-table-btn seat-pop" onClick={() => joinTable(t.kind)}>
+              {GAME_ICON[t.kind]} Join {openerName(t.opener)}'s {GAME_NAMES[t.kind]} table →
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="game-grid">
         {pub.games.map((g) => (
           <button key={g} className={`game-tile ${g === kind ? 'active' : ''}`} onClick={() => setKind(g)}>
@@ -108,7 +130,7 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
       )}
 
       {isPoker ? (
-        <p className="muted">Ante ${pub.bets.pokerAnte} from the shared bank. Best 3-card hand wins; worst takes a drink.</p>
+        <p className="muted">🃏 Multiplayer poker — others can join your table. No money: bet & raise in <b>drinks</b>, worst hand at showdown drinks the pot.</p>
       ) : (
         <>
           <p className="muted">Bet from the shared bank (${available.toLocaleString()} available)</p>
@@ -123,7 +145,7 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
       )}
 
       <button className="btn btn--primary btn--lg btn--block" disabled={busy} onClick={start}>
-        {isPoker ? `Ante up — $${pub.bets.pokerAnte}` : `${GAME_ICON[kind]} Deal ${GAME_NAMES[kind]} — $${bet}`}
+        {isPoker ? '🃏 Join the poker table' : `${GAME_ICON[kind]} Deal ${GAME_NAMES[kind]} — $${bet}`}
       </button>
       {error && <p className="error">{error}</p>}
     </div>

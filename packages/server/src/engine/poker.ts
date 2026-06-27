@@ -11,7 +11,6 @@ import {
   type DeviceId,
   type GameAction,
   type HoldemStreet,
-  type Money,
   type PrivateGameView,
   type PublicGameView,
   type Result,
@@ -21,37 +20,43 @@ import {
 } from '@lcc/shared';
 import type { Rng } from '@lcc/shared';
 import type { ReduceCtx } from './reducer';
-import { adjust, reserve, releaseReserve } from './bank';
 import { addTicker } from './state';
 import { mint, type TokenCtx } from './tokens';
 import { shuffledDeck } from './games/cards/Deck';
 
-// ---- Texas Hold'em (shared-bank party adaptation) ----
-// 2 hole cards each, community flop/turn/river revealed street by street. There's no money
-// betting (the bank is shared, so a pot is meaningless) — each street you Stay or Fold, and at
-// the showdown the WORST hand among stayers drinks; folders who'd have won also drink.
+// ---- Poker (multiplayer Texas Hold'em, drink-stakes) ----
+// 2 hole cards each; community flop/turn/river revealed street by street. Real betting rounds with
+// check / bet / raise / call / fold — but the pot is DRINKS, not money (the bank is shared). Each
+// bet/raise adds a drink to the pot; at showdown the WORST hand among the players still in drinks it.
 
 interface HoldemEntry {
   seatId: SeatId;
-  ante: Money;
   hole: Card[];
   folded: boolean;
-  acted: boolean;
+  actedThisRound: boolean; // acted since the last bet/raise on this street
 }
+
+// Drink-stakes poker: there's no money pot (the bank is shared). Instead `pot` is the number of
+// DRINKS the worst hand will take at showdown; bet/raise each add one drink to the pot.
+export const POKER_POT_START = 1; // the ante: the loser always drinks at least this
+export const POKER_BET_CAP = 3; // max bet level per street (caps raise wars)
+export const POKER_POT_CAP = 5; // overall pot cap (the safety system still caps drinking at resolution)
 
 export interface PokerData {
   phase: 'joining' | 'betting' | 'done';
   street: HoldemStreet;
-  ante: Money;
   joinDeadline: number;
-  actDeadline: number;
-  streetStartedAt: number;
+  turnDeadline: number;
   deck: Card[];
   community: Card[];
   entries: HoldemEntry[];
-  pot: Money;
+  pot: number; // drinks at stake
+  bet: number; // outstanding raise this street (0 => current player may check)
+  turnIndex: number; // index into entries whose turn it is
   result?: {
     winnerSeatId: SeatId | null;
+    loserSeatId: SeatId | null;
+    pot: number;
     community: Card[];
     reveals: { seatId: SeatId; handLabel: string; cards: Card[]; folded: boolean }[];
   };
@@ -219,17 +224,15 @@ export function startOrJoinPoker(state: RoomState, deviceId: DeviceId, seatId: S
   if (seat.activeSessionId) return err('GAME_LOCKED', 'Finish your current game first.');
   const floor = FLOOR_BY_INDEX[state.currentFloor];
   if (!floor.gamePool.includes('poker3')) return err('GAME_LOCKED', 'Poker is closed on this floor.');
-  const ante = floor.pokerAnte;
-  if (!reserve(state.bank, ante)) return err('INSUFFICIENT_BANK', 'The bank can’t cover the ante.');
 
+  // Poker is drink-stakes only — no money leaves the shared bank.
   const open = findOpenPoker(state);
   if (open) {
     const data = open.data;
-    data.entries.push({ seatId, ante, hole: [data.deck.pop()!, data.deck.pop()!], folded: false, acted: false });
-    data.pot += ante;
+    data.entries.push({ seatId, hole: [data.deck.pop()!, data.deck.pop()!], folded: false, actedThisRound: false });
     seat.activeSessionId = open.id;
     seat.lastGame = null;
-    addTicker(state, `${seat.name} joined the Hold'em table`, 'info', rctx.now);
+    addTicker(state, `${seat.name} joined the poker table 🪑`, 'event', rctx.now);
     return ok({ sessionId: open.id });
   }
 
@@ -238,20 +241,54 @@ export function startOrJoinPoker(state: RoomState, deviceId: DeviceId, seatId: S
   const data: PokerData = {
     phase: 'joining',
     street: 'preflop',
-    ante,
     joinDeadline: rctx.now + POKER_JOIN_WINDOW_MS,
-    actDeadline: 0,
-    streetStartedAt: rctx.now,
+    turnDeadline: 0,
     deck,
     community: [],
-    entries: [{ seatId, ante, hole: [deck.pop()!, deck.pop()!], folded: false, acted: false }],
-    pot: ante,
+    entries: [{ seatId, hole: [deck.pop()!, deck.pop()!], folded: false, actedThisRound: false }],
+    pot: POKER_POT_START,
+    bet: 0,
+    turnIndex: 0,
   };
-  state.sessions[sessionId] = { id: sessionId, kind: 'poker3', seatId, bet: ante, reserved: 0, startedAt: rctx.now, data, settled: false, revealUntil: null };
+  state.sessions[sessionId] = { id: sessionId, kind: 'poker3', seatId, bet: 0, reserved: 0, startedAt: rctx.now, data, settled: false, revealUntil: null };
   seat.activeSessionId = sessionId;
   seat.lastGame = null;
-  addTicker(state, `${seat.name} opened a Texas Hold'em table — join now!`, 'event', rctx.now);
+  addTicker(state, `${seat.name} opened a poker table — join now! 🃏`, 'event', rctx.now);
   return ok({ sessionId });
+}
+
+
+type PokerSession = { id: string; data: unknown; revealUntil?: number | null; settled?: boolean };
+
+// ---- turn / betting helpers ----
+
+function activeEntries(data: PokerData): HoldemEntry[] {
+  return data.entries.filter((e) => !e.folded);
+}
+function firstActiveIndex(data: PokerData): number {
+  const i = data.entries.findIndex((e) => !e.folded);
+  return i < 0 ? 0 : i;
+}
+function nextActiveIndex(data: PokerData, from: number): number {
+  const n = data.entries.length;
+  for (let step = 1; step <= n; step++) {
+    const idx = (from + step) % n;
+    if (!data.entries[idx]!.folded) return idx;
+  }
+  return from;
+}
+
+/** Legal actions for an entry whose turn it is. */
+function legalFor(data: PokerData): GameAction[] {
+  if (data.bet === 0) {
+    const acts: GameAction[] = [{ kind: 'check' }];
+    if (data.pot < POKER_POT_CAP) acts.push({ kind: 'bet' });
+    return acts;
+  }
+  const acts: GameAction[] = [{ kind: 'call' }];
+  if (data.bet < POKER_BET_CAP && data.pot < POKER_POT_CAP) acts.push({ kind: 'raise' });
+  acts.push({ kind: 'fold' });
+  return acts;
 }
 
 export function pokerAct(state: RoomState, deviceId: DeviceId, seatId: SeatId, action: GameAction, rctx: ReduceCtx): Result<Record<string, never>> {
@@ -262,28 +299,76 @@ export function pokerAct(state: RoomState, deviceId: DeviceId, seatId: SeatId, a
   if (!session || session.kind !== 'poker3') return err('NOT_FOUND', 'No poker game.');
   const data = session.data as PokerData;
   if (data.phase !== 'betting') return err('WRONG_PHASE', 'Not your move yet.');
-  if (action.kind !== 'play' && action.kind !== 'fold') return err('ILLEGAL_ACTION', 'Stay or fold.');
-  const entry = data.entries.find((e) => e.seatId === seatId);
-  if (!entry || entry.folded) return err('NOT_FOUND', 'Not in this hand.');
-  if (entry.acted) return err('ILLEGAL_ACTION', 'Already acted this street.');
-  entry.acted = true;
-  if (action.kind === 'fold') entry.folded = true;
-  const active = data.entries.filter((e) => !e.folded);
-  if (active.length <= 1 || active.every((e) => e.acted)) advanceStreet(state, session, rctx);
+  const entry = data.entries[data.turnIndex];
+  if (!entry || entry.seatId !== seatId) return err('NOT_YOUR_TURN', "It's not your turn.");
+
+  switch (action.kind) {
+    case 'check':
+      if (data.bet !== 0) return err('ILLEGAL_ACTION', 'There’s a bet — call, raise or fold.');
+      entry.actedThisRound = true;
+      break;
+    case 'bet':
+      if (data.bet !== 0) return err('ILLEGAL_ACTION', 'Already a bet — raise instead.');
+      if (data.pot >= POKER_POT_CAP) return err('ILLEGAL_ACTION', 'Pot is maxed out.');
+      data.bet = 1;
+      data.pot = Math.min(POKER_POT_CAP, data.pot + 1);
+      for (const e of data.entries) e.actedThisRound = false;
+      entry.actedThisRound = true;
+      addTicker(state, `${seat.name} bet — pot ${data.pot} 🍺`, 'event', rctx.now);
+      break;
+    case 'raise':
+      if (data.bet === 0) return err('ILLEGAL_ACTION', 'Nothing to raise — bet first.');
+      if (data.bet >= POKER_BET_CAP || data.pot >= POKER_POT_CAP) return err('ILLEGAL_ACTION', 'Can’t raise any higher.');
+      data.bet += 1;
+      data.pot = Math.min(POKER_POT_CAP, data.pot + 1);
+      for (const e of data.entries) e.actedThisRound = false;
+      entry.actedThisRound = true;
+      addTicker(state, `${seat.name} raised — pot ${data.pot} 🍺`, 'event', rctx.now);
+      break;
+    case 'call':
+      if (data.bet === 0) return err('ILLEGAL_ACTION', 'Nothing to call — check instead.');
+      entry.actedThisRound = true;
+      break;
+    case 'fold':
+      entry.folded = true;
+      entry.actedThisRound = true;
+      break;
+    default:
+      return err('ILLEGAL_ACTION', 'Check, bet, raise, call or fold.');
+  }
+
+  afterAction(state, session, rctx);
   return ok({});
+}
+
+function afterAction(state: RoomState, session: PokerSession, rctx: ReduceCtx): void {
+  const data = session.data as PokerData;
+  if (activeEntries(data).length <= 1) {
+    resolveShowdown(state, session, rctx);
+    return;
+  }
+  if (activeEntries(data).every((e) => e.actedThisRound)) {
+    closeStreet(state, session, rctx);
+    return;
+  }
+  data.turnIndex = nextActiveIndex(data, data.turnIndex);
+  data.turnDeadline = rctx.now + TURN_TIMEOUT_MS;
 }
 
 function dealCommunity(data: PokerData, n: number): void {
   for (let i = 0; i < n; i++) data.community.push(data.deck.pop()!);
 }
 
-function advanceStreet(state: RoomState, session: { id: string; data: unknown }, rctx: ReduceCtx): void {
+/** Reset the betting round at the start of a street. */
+function startStreet(data: PokerData, now: number): void {
+  data.bet = 0;
+  for (const e of data.entries) if (!e.folded) e.actedThisRound = false;
+  data.turnIndex = firstActiveIndex(data);
+  data.turnDeadline = now + TURN_TIMEOUT_MS;
+}
+
+function closeStreet(state: RoomState, session: PokerSession, rctx: ReduceCtx): void {
   const data = session.data as PokerData;
-  const active = data.entries.filter((e) => !e.folded);
-  if (active.length <= 1) {
-    resolveShowdown(state, session, rctx);
-    return;
-  }
   if (data.street === 'river') {
     resolveShowdown(state, session, rctx);
     return;
@@ -291,7 +376,7 @@ function advanceStreet(state: RoomState, session: { id: string; data: unknown },
   if (data.street === 'preflop') {
     data.street = 'flop';
     dealCommunity(data, 3);
-    addTicker(state, `Poker: the flop — ${data.community.map((c) => c.rank).join(' ')}`, 'event', rctx.now);
+    addTicker(state, 'Poker: the flop 🃏', 'event', rctx.now);
   } else if (data.street === 'flop') {
     data.street = 'turn';
     dealCommunity(data, 1);
@@ -301,128 +386,126 @@ function advanceStreet(state: RoomState, session: { id: string; data: unknown },
     dealCommunity(data, 1);
     addTicker(state, 'Poker: the river', 'event', rctx.now);
   }
-  for (const e of active) e.acted = false;
-  data.streetStartedAt = rctx.now;
-  data.actDeadline = rctx.now + TURN_TIMEOUT_MS;
+  startStreet(data, rctx.now);
 }
 
-/** Drives join close + per-street timeouts. */
+/** Drives join close + per-turn timeouts. */
 export function pokerTick(state: RoomState, rctx: ReduceCtx): boolean {
   let changed = false;
   for (const session of Object.values(state.sessions)) {
     if (session.kind !== 'poker3') continue;
     const data = session.data as PokerData;
     if (data.phase === 'joining' && rctx.now >= data.joinDeadline) {
-      if (data.entries.length < 2) {
-        fizzle(state, session, rctx);
-      } else {
+      if (data.entries.length < 2) fizzle(state, session, rctx);
+      else {
         data.phase = 'betting';
         data.street = 'preflop';
-        for (const e of data.entries) e.acted = false;
-        data.streetStartedAt = rctx.now;
-        data.actDeadline = rctx.now + TURN_TIMEOUT_MS;
-        addTicker(state, "Hold'em: hole cards dealt — stay or fold!", 'event', rctx.now);
+        startStreet(data, rctx.now);
+        addTicker(state, 'Poker: cards dealt — place your bets! 🃏', 'event', rctx.now);
       }
       changed = true;
-    } else if (data.phase === 'betting' && rctx.now >= data.actDeadline) {
-      for (const e of data.entries) if (!e.folded) e.acted = true; // slow players auto-stay
-      advanceStreet(state, session, rctx);
+    } else if (data.phase === 'betting' && rctx.now >= data.turnDeadline) {
+      const cur = data.entries[data.turnIndex];
+      if (cur && !cur.folded) {
+        cur.folded = true; // away player auto-folds (never forced to drink)
+        cur.actedThisRound = true;
+        addTicker(state, `${state.seats[cur.seatId]?.name ?? '??'} timed out — folded`, 'info', rctx.now);
+        afterAction(state, session, rctx);
+      } else {
+        data.turnIndex = nextActiveIndex(data, data.turnIndex);
+        data.turnDeadline = rctx.now + TURN_TIMEOUT_MS;
+      }
       changed = true;
     }
   }
   return changed;
 }
 
-function fizzle(state: RoomState, session: { id: string; data: unknown }, rctx: ReduceCtx): void {
+function fizzle(state: RoomState, session: PokerSession, rctx: ReduceCtx): void {
   const data = session.data as PokerData;
   for (const e of data.entries) {
-    releaseReserve(state.bank, e.ante);
     const seat = state.seats[e.seatId];
     if (seat) seat.lastGame = { summary: { won: false, bankDelta: 0, text: 'Table fizzled' }, at: rctx.now };
   }
   data.phase = 'done';
-  data.result = { winnerSeatId: null, community: data.community, reveals: [] };
-  session.data = data;
-  (session as { revealUntil?: number | null; settled?: boolean }).revealUntil = rctx.now;
-  (session as { settled?: boolean }).settled = true;
+  data.result = { winnerSeatId: null, loserSeatId: null, pot: 0, community: data.community, reveals: [] };
+  session.revealUntil = rctx.now;
+  session.settled = true;
   addTicker(state, 'Poker table fizzled', 'info', rctx.now);
 }
 
-function resolveShowdown(state: RoomState, session: { id: string; data: unknown; revealUntil?: number | null; settled?: boolean }, rctx: ReduceCtx): void {
+function resolveShowdown(state: RoomState, session: PokerSession, rctx: ReduceCtx): void {
   const data = session.data as PokerData;
   data.phase = 'done';
   session.settled = true;
   const tokenCtx: TokenCtx = { ids: rctx.ids, now: rctx.now };
 
-  for (const e of data.entries) releaseReserve(state.bank, e.ante);
-
   const evals = data.entries.map((e) => ({ entry: e, hand: bestHand([...e.hole, ...data.community]) }));
   const reveals = evals.map((x) => ({ seatId: x.entry.seatId, handLabel: x.hand.label, cards: x.entry.hole, folded: x.entry.folded }));
   const stayers = evals.filter((x) => !x.entry.folded);
+  for (const { entry } of evals) {
+    const seat = state.seats[entry.seatId];
+    if (seat) applyStatEvent(seat.stats, { field: 'plays', value: 1 });
+  }
 
-  if (stayers.length === 0) {
-    for (const e of data.entries) {
-      const seat = state.seats[e.seatId];
-      if (seat) seat.lastGame = { summary: { won: false, bankDelta: 0, text: 'Everyone folded' }, at: rctx.now };
+  // everyone folded but (at most) one — the survivor wins, nobody drinks
+  if (stayers.length <= 1) {
+    const winnerId = stayers[0]?.entry.seatId ?? null;
+    for (const { entry } of evals) {
+      const seat = state.seats[entry.seatId];
+      if (!seat) continue;
+      if (entry.seatId === winnerId) {
+        applyStatEvent(seat.stats, { field: 'gamesWon', value: 1 });
+        seat.lastGame = { summary: { won: true, bankDelta: 0, text: 'Everyone folded — you win 🏆' }, at: rctx.now };
+      } else {
+        seat.lastGame = { summary: { won: false, bankDelta: 0, text: 'Folded' }, at: rctx.now };
+      }
     }
-    data.result = { winnerSeatId: null, community: data.community, reveals };
-    session.revealUntil = rctx.now;
+    data.result = { winnerSeatId: winnerId, loserSeatId: null, pot: 0, community: data.community, reveals };
+    addTicker(state, `Poker: ${winnerId ? state.seats[winnerId]?.name ?? '??' : 'nobody'} took it — no drinks`, 'info', rctx.now);
+    session.revealUntil = rctx.now + GAME_REVEAL_MS;
     return;
   }
 
   stayers.sort((a, b) => cmp(b.hand.tiebreak, a.hand.tiebreak));
   const winner = stayers[0]!;
-  const worst = stayers[stayers.length - 1]!;
+  const loser = stayers[stayers.length - 1]!;
+  const pot = data.pot;
 
-  for (const { entry } of evals) {
+  for (const { entry, hand } of evals) {
     const seat = state.seats[entry.seatId];
     if (!seat) continue;
-    applyStatEvent(seat.stats, { field: 'plays', value: 1 });
     if (entry.seatId === winner.entry.seatId) {
-      const credit = data.pot - entry.ante;
       applyStatEvent(seat.stats, { field: 'gamesWon', value: 1 });
-      applyStatEvent(seat.stats, { field: 'netBank', value: credit });
-      seat.lastGame = { summary: { won: true, bankDelta: credit, text: `Won with ${winner.hand.label}` }, at: rctx.now };
-    } else {
+      seat.lastGame = { summary: { won: true, bankDelta: 0, text: `Won with ${winner.hand.label} 🏆` }, at: rctx.now };
+    } else if (entry.seatId === loser.entry.seatId) {
       applyStatEvent(seat.stats, { field: 'gamesLost', value: 1 });
-      applyStatEvent(seat.stats, { field: 'netBank', value: -entry.ante });
-      const e2 = evals.find((x) => x.entry === entry)!;
-      seat.lastGame = {
-        summary: { won: false, bankDelta: -entry.ante, text: entry.folded ? 'Folded' : `Lost with ${e2.hand.label}` },
-        at: rctx.now,
-      };
+      seat.lastGame = { summary: { won: false, bankDelta: 0, text: `Worst hand (${loser.hand.label}) — drink ${pot} 🍺` }, at: rctx.now };
+    } else {
+      seat.lastGame = { summary: { won: false, bankDelta: 0, text: entry.folded ? 'Folded' : hand.label }, at: rctx.now };
     }
   }
 
-  if (stayers.length >= 2) {
-    mint(state, { ownerSeatId: worst.entry.seatId, originSeatId: 'system', count: 1, kind: 'alcohol', source: 'game', reason: 'poker.worstHand' }, tokenCtx);
-  }
-  for (const { entry, hand } of evals) {
-    if (entry.folded && cmp(hand.tiebreak, winner.hand.tiebreak) > 0) {
-      mint(state, { ownerSeatId: entry.seatId, originSeatId: 'system', count: 1, kind: 'alcohol', source: 'game', reason: 'poker.foldWouldWin' }, tokenCtx);
-    }
-  }
-  if (winner.hand.category === 1) {
-    const others = data.entries.map((e) => e.seatId).filter((id) => id !== winner.entry.seatId);
-    if (others.length > 0) {
-      mint(state, { ownerSeatId: rctx.rng.pick(others), originSeatId: winner.entry.seatId, count: 1, kind: 'alcohol', source: 'game', reason: 'poker.highCardWin' }, tokenCtx);
-    }
-  }
-
-  addTicker(state, `Poker: ${state.seats[winner.entry.seatId]?.name ?? '??'} won with ${winner.hand.label}`, 'win', rctx.now);
-  data.result = { winnerSeatId: winner.entry.seatId, community: data.community, reveals };
+  mint(state, { ownerSeatId: loser.entry.seatId, originSeatId: 'system', count: pot, kind: 'alcohol', source: 'game', reason: 'poker.worstHand' }, tokenCtx);
+  addTicker(state, `Poker: ${state.seats[loser.entry.seatId]?.name ?? '??'} lost with ${loser.hand.label} — drinks ${pot} 🍺`, 'win', rctx.now);
+  data.result = { winnerSeatId: winner.entry.seatId, loserSeatId: loser.entry.seatId, pot, community: data.community, reveals };
   session.revealUntil = rctx.now + GAME_REVEAL_MS;
 }
 
-/** Simple bot strategy: stay with a pair+, otherwise lean on high cards. */
-export function holdemBotDecision(data: PokerData, seatId: SeatId, rng: Rng): 'play' | 'fold' {
+/** Bot betting: lean on hand strength, with light bluffing; never raises into the cap. */
+export function pokerBotAction(data: PokerData, seatId: SeatId, rng: Rng): GameAction {
   const entry = data.entries.find((e) => e.seatId === seatId);
-  if (!entry) return 'fold';
+  if (!entry) return { kind: 'fold' };
   const hand = bestHand([...entry.hole, ...data.community]);
-  if (hand.category >= 2) return 'play';
-  const hi = hand.tiebreak[1] ?? 0;
-  if (hi >= 12) return 'play';
-  return rng.chance(0.45) ? 'play' : 'fold';
+  const strong = hand.category >= 4;
+  const decent = hand.category >= 2 || (hand.tiebreak[1] ?? 0) >= 12;
+  if (data.bet === 0) {
+    if (strong && data.pot < POKER_POT_CAP && rng.chance(0.7)) return { kind: 'bet' };
+    return { kind: 'check' };
+  }
+  if (strong && data.bet < POKER_BET_CAP && data.pot < POKER_POT_CAP && rng.chance(0.5)) return { kind: 'raise' };
+  if (decent) return { kind: 'call' };
+  return rng.chance(0.6) ? { kind: 'fold' } : { kind: 'call' };
 }
 
 // ---- projection ----
@@ -435,8 +518,10 @@ export function pokerPublicView(session: { data: unknown }): PublicGameView {
     phase: data.phase === 'betting' ? 'acting' : data.phase,
     street: data.street,
     community: data.community,
-    ante: data.ante,
     pot: data.pot,
+    toCall: data.bet,
+    turnSeatId: data.phase === 'betting' ? data.entries[data.turnIndex]?.seatId ?? null : null,
+    players: data.entries.map((e) => ({ seatId: e.seatId, folded: e.folded })),
     result: data.result,
   };
 }
@@ -445,15 +530,19 @@ export function pokerPrivateView(session: { data: unknown }, seatId: SeatId): Pr
   const data = session.data as PokerData;
   const entry = data.entries.find((e) => e.seatId === seatId);
   if (!entry) return null;
-  const canAct = data.phase === 'betting' && !entry.folded && !entry.acted;
+  const myTurn = data.phase === 'betting' && data.entries[data.turnIndex]?.seatId === seatId && !entry.folded;
   return {
     kind: 'poker3',
-    bet: entry.ante,
     phase: data.phase === 'betting' ? 'acting' : data.phase,
     street: data.street,
     hole: entry.hole,
     community: data.community,
     handLabel: bestHand([...entry.hole, ...data.community]).label,
-    legal: canAct ? [{ kind: 'play' }, { kind: 'fold' }] : [],
+    pot: data.pot,
+    toCall: data.bet,
+    myTurn,
+    folded: entry.folded,
+    legal: myTurn ? legalFor(data) : [],
+    others: data.entries.filter((e) => e.seatId !== seatId).map((e) => ({ seatId: e.seatId, folded: e.folded })),
   };
 }

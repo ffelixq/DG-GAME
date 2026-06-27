@@ -6,7 +6,7 @@ export const GAME_KINDS: readonly GameKind[] = ['blackjack', 'poker3', 'roulette
 
 export const GAME_NAMES: Record<GameKind, string> = {
   blackjack: 'Blackjack',
-  poker3: "Texas Hold'em",
+  poker3: 'Poker',
   roulette: 'Roulette',
   diceDuel: 'Dice Duel',
   slots: 'Slots',
@@ -38,8 +38,11 @@ export type GameAction =
   | { kind: 'double' }
   | { kind: 'deal' } // blackjack table: start the deal early (skip the join window)
   | { kind: 'replay' } // solo games: play another round with the same bet
-  | { kind: 'play' } // poker3: keep hand
-  | { kind: 'fold' } // poker3: fold
+  | { kind: 'check' } // poker: pass (no outstanding bet)
+  | { kind: 'bet' } // poker: open the betting (+1 drink to the pot)
+  | { kind: 'raise' } // poker: raise the stakes (+1 drink to the pot)
+  | { kind: 'call' } // poker: match the current stake
+  | { kind: 'fold' } // poker: drop out of the hand
   | { kind: 'spin' } // roulette / slots / dice resolve
   | { kind: 'guess'; band: DiceBand };
 
