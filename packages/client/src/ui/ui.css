@@ -959,6 +959,58 @@
   }
 }
 
+/* drink check */
+.drink-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+.drink-token {
+  flex: 1 1 90px;
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border-radius: 14px;
+  border: 2px dashed rgba(185, 168, 216, 0.5);
+  background: var(--lcc-bg-elev);
+  color: var(--lcc-ink-dim);
+  cursor: pointer;
+  transition: transform 0.07s ease, filter 0.15s ease;
+}
+.drink-token .dt-emoji {
+  font-size: 1.8rem;
+  filter: grayscale(0.7) opacity(0.6);
+}
+.drink-token .dt-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.drink-token.on {
+  border: 2px solid var(--lcc-gold);
+  background: rgba(255, 210, 63, 0.16);
+  color: var(--lcc-ink);
+  box-shadow: 0 0 16px rgba(255, 210, 63, 0.4);
+}
+.drink-token.on .dt-emoji {
+  filter: none;
+}
+.drink-token:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.drink-token:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.drink-summary {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--lcc-ink);
+}
+
 /* "join the open table" call-to-action in the game picker */
 .join-tables {
   display: flex;

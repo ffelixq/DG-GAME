@@ -26,32 +26,39 @@ export function DrinkCheckPanel({ seatId, dc }: { seatId: SeatId; dc: DrinkCheck
   }
 
   const carrying = dc.tokens.length - selected.size;
+  const total = dc.tokens.length;
 
   return (
     <div className="card stack reveal">
-      <div className="spread">
-        <h2 className="h2">🍺 Drink Check #{dc.index}</h2>
-        <span className="muted">up to {budget}</span>
-      </div>
+      <h2 className="h2" style={{ textAlign: 'center' }}>🍺 Drink Check</h2>
 
-      {dc.tokens.length === 0 ? (
-        <p className="muted">Nothing to resolve 🎉</p>
+      {total === 0 ? (
+        <p className="tag" style={{ textAlign: 'center' }}>You're clear — nothing to drink! 🎉</p>
       ) : (
-        dc.tokens.map((t, i) => {
-          const on = selected.has(t.id);
-          const disabled = !on && selected.size >= budget;
-          return (
-            <button key={t.id} className={`chip ${on ? 'sel' : ''}`} disabled={disabled} onClick={() => toggle(t.id)} style={{ width: '100%', minHeight: 56 }}>
-              {on ? '🍺 Drink' : `Token ${i + 1}`}
-            </button>
-          );
-        })
+        <>
+          <p className="muted" style={{ textAlign: 'center' }}>
+            You picked up <b>{total}</b> drink{total === 1 ? '' : 's'}. Take up to <b>{budget}</b> now — tap one to drink it. The rest carry to the next check.
+          </p>
+          <div className="drink-tokens">
+            {dc.tokens.map((t) => {
+              const on = selected.has(t.id);
+              const disabled = !on && selected.size >= budget;
+              return (
+                <button key={t.id} className={`drink-token ${on ? 'on' : ''}`} disabled={disabled} onClick={() => toggle(t.id)}>
+                  <span className="dt-emoji">🍺</span>
+                  <span className="dt-label">{on ? 'Drink now' : 'Carry →'}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="drink-summary">
+            Drinking <b>{selected.size}</b> now{carrying > 0 ? <> · <b>{carrying}</b> carrying over</> : null}
+          </div>
+        </>
       )}
 
-      {carrying > 0 && <p className="muted">{carrying} carries over to the next check.</p>}
-
       <button className="btn btn--primary btn--lg btn--block" onClick={done}>
-        Done
+        {total === 0 ? 'Done' : selected.size > 0 ? 'Cheers — done 🍻' : 'Carry them all — done'}
       </button>
     </div>
   );

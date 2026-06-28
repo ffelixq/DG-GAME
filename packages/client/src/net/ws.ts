@@ -52,6 +52,8 @@ export class RoomConnection {
   private code: string | null = null;
   private closedByUs = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private attempts = 0;
+  private static readonly MAX_ATTEMPTS = 6; // ~1s,2s,4s,8s,16s,30s then give up (avoid hammering the server)
 
   onStatus: ((connected: boolean) => void) | null = null;
 
@@ -64,6 +66,15 @@ export class RoomConnection {
   open(code: string): void {
     this.code = code;
     this.closedByUs = false;
+    this.attempts = 0;
+    this.connect();
+  }
+
+  /** Manual reconnect (e.g. after the auto-retries gave up). */
+  retry(): void {
+    if (!this.code) return;
+    this.closedByUs = false;
+    this.attempts = 0;
     this.connect();
   }
 
@@ -72,10 +83,16 @@ export class RoomConnection {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}/ws?room=${this.code}&device=${encodeURIComponent(this.deviceId)}`);
     this.ws = ws;
-    ws.onopen = () => this.onStatus?.(true);
+    ws.onopen = () => {
+      this.attempts = 0;
+      this.onStatus?.(true);
+    };
     ws.onclose = () => {
       this.onStatus?.(false);
-      if (!this.closedByUs) this.reconnectTimer = setTimeout(() => this.connect(), 1000);
+      if (this.closedByUs || this.attempts >= RoomConnection.MAX_ATTEMPTS) return;
+      const delay = Math.min(30000, 1000 * 2 ** this.attempts);
+      this.attempts += 1;
+      this.reconnectTimer = setTimeout(() => this.connect(), delay);
     };
     ws.onmessage = (e) => {
       let frame: WsServerFrame;

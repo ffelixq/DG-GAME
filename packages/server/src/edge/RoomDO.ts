@@ -7,7 +7,7 @@ import type { Emitter, Transport } from '../socket/transport';
 import { commandForEvent } from './commands';
 import type { Env } from './env';
 
-const TICK_MS = 1000; // alarm-driven tick cadence while a round is live (client animates the countdown)
+const TICK_MS = 2500; // alarm-driven tick cadence while a round is live (client animates the countdown locally)
 
 interface Persisted {
   code: RoomCode;
@@ -16,9 +16,11 @@ interface Persisted {
   rng: RngSnapshot;
 }
 
-/** A round only needs the tick loop while time is actually advancing. */
+/** A round only needs the tick loop while time is advancing AND someone's watching. */
 function wantsTick(state: RoomState): boolean {
   if (state.paused) return false;
+  const anyConnected = Object.values(state.devices).some((d) => d.connected && d.deviceId !== '__bot__');
+  if (!anyConnected) return false; // abandoned room — stop burning requests
   return state.phase === 'floorIntro' || state.phase === 'playing' || state.phase === 'drinkCheck' || state.phase === 'event';
 }
 
