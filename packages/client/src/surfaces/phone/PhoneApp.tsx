@@ -3,6 +3,7 @@ import type { PublicRoomView } from '@lcc/shared';
 import { useConn } from '../../net/connection';
 import { Roster } from '../../ui/Roster';
 import { Confetti } from '../../ui/Confetti';
+import { HowToPlay } from '../../ui/HowToPlay';
 import { PhonePlay } from './PhonePlay';
 
 export function PhoneApp() {
@@ -153,6 +154,9 @@ function PhoneLobby({ pub }: { pub: PublicRoomView }) {
           Waiting for the host to start…
         </p>
       )}
+      <div style={{ textAlign: 'center' }}>
+        <HowToPlay />
+      </div>
     </div>
   );
 }

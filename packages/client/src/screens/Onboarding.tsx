@@ -33,14 +33,15 @@ export function Onboarding() {
       <div className="screen">
         <div className="stack" style={{ textAlign: 'center' }}>
           <p className="muted">Room {pub?.code}</p>
-          <h2 className="h2">Is everyone looking at this screen?</h2>
+          <h2 className="h2">What is this device?</h2>
+          <p className="muted">Use one shared TV/laptop as the “board” everyone watches; each person plays on their own phone.</p>
         </div>
         <div className="stack">
           <button className="btn btn--cyan btn--lg btn--block" disabled={busy} onClick={makeBigScreen}>
-            📺 Yes — make it the big screen
+            📺 The shared big screen <span className="btn-sub">— a TV / laptop everyone can see</span>
           </button>
           <button className="btn btn--primary btn--lg btn--block" disabled={busy} onClick={() => setStep('seats')}>
-            📱 No — I'm a player
+            📱 My phone — I’m playing
           </button>
         </div>
         {error && <p className="error">{error}</p>}
@@ -53,6 +54,7 @@ export function Onboarding() {
       <div className="stack" style={{ textAlign: 'center' }}>
         <p className="muted">Room {pub?.code}</p>
         <h2 className="h2">Who's playing on this phone?</h2>
+        <p className="muted">Add your name. Two people can share one phone — add both names.</p>
       </div>
       <div className="stack">
         <input
