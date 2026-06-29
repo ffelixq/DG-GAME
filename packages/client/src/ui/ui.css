@@ -904,16 +904,20 @@
   align-items: center;
   justify-content: center;
   font-family: var(--lcc-font-display);
-  font-size: 2.4rem;
+  font-size: 2.6rem;
+  z-index: 6; /* above the wheel, hub, pointer and ball so the result stays readable */
 }
 .wheel-center .num {
-  background: rgba(11, 0, 20, 0.82);
+  background: #0b0014; /* solid disc — the wheel must not shine through */
   border-radius: 50%;
-  width: 92px;
-  height: 92px;
+  width: 96px;
+  height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 3px solid var(--lcc-gold);
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.8), inset 0 0 12px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
   animation: pop-in 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) both;
 }
 @keyframes pop-in {
