@@ -12,22 +12,37 @@ import { SpinControls } from './games/SpinControls';
 import { PokerControls } from './games/PokerControls';
 
 function PhoneTopBar({ pub, onPause }: { pub: PublicRoomView; onPause: () => void }) {
-  const { serverOffset } = useConn();
+  const { serverOffset, bankFreeze, act, deviceId } = useConn();
   const now = useServerNow(serverOffset);
   const remaining = pub.timer.running ? pub.timer.endsAt - now : pub.timer.remainingMs;
-  const pct = Math.min(100, Math.max(0, (pub.bank / pub.quota) * 100));
+  // hold the bank display steady through a spin so the result isn't spoiled before the reveal
+  const bank = bankFreeze && Date.now() < bankFreeze.until ? bankFreeze.value : pub.bank;
+  const pct = Math.min(100, Math.max(0, (bank / pub.quota) * 100));
+  const isHost = pub.hostDeviceId === deviceId;
   return (
     <div className="topbar">
       <div className="spread">
         <span className="muted">
           {pub.floorName} · <span className={remaining < 30000 ? 'timer-low' : ''}>{formatClock(remaining)}</span>
         </span>
-        <button className="btn btn--ghost btn--sm" onClick={onPause}>
-          {pub.paused ? '▶' : '⏸'}
-        </button>
+        <span className="row" style={{ gap: '0.4rem' }}>
+          {isHost && pub.phase === 'playing' && (
+            <button
+              className="btn btn--ghost btn--sm"
+              onClick={() => {
+                if (window.confirm('End the round now for everyone?')) act('control:endRound', {});
+              }}
+            >
+              ⏹ End round
+            </button>
+          )}
+          <button className="btn btn--ghost btn--sm" onClick={onPause}>
+            {pub.paused ? '▶' : '⏸'}
+          </button>
+        </span>
       </div>
       <div className="bank-line" style={{ fontSize: '0.85rem' }}>
-        <span>${pub.bank.toLocaleString()}</span>
+        <span>${bank.toLocaleString()}</span>
         <span className="quota">quota ${pub.quota.toLocaleString()}</span>
       </div>
       <div className="bank-meter" style={{ height: 14 }}>

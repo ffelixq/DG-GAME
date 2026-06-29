@@ -11,19 +11,29 @@ export function PlayingCard({
   className?: string;
   delayMs?: number;
 }) {
-  const style = delayMs ? { animationDelay: `${delayMs}ms` } : undefined;
-  if (hidden || !card) {
-    return (
-      <span className={`pcard pcard--back ${className}`} style={style}>
-        🂠
-      </span>
-    );
-  }
-  const red = card.suit === 'H' || card.suit === 'D';
+  const faceUp = !hidden && !!card;
+  const red = card ? card.suit === 'H' || card.suit === 'D' : false;
+  const sym = card ? SUIT_SYMBOL[card.suit] : '';
   return (
-    <span className={`pcard ${red ? 'pcard--red' : ''} ${className}`} style={style}>
-      {card.rank}
-      {SUIT_SYMBOL[card.suit]}
+    <span className={`pcard ${className}`} style={delayMs ? { animationDelay: `${delayMs}ms` } : undefined}>
+      <span className={`pcard-inner ${faceUp ? 'up' : ''}`}>
+        <span className="pcard-face pcard-back" aria-hidden="true" />
+        <span className={`pcard-face pcard-front ${red ? 'red' : ''}`}>
+          {card && (
+            <>
+              <span className="pc-idx pc-tl">
+                {card.rank}
+                <i>{sym}</i>
+              </span>
+              <span className="pc-pip">{sym}</span>
+              <span className="pc-idx pc-br">
+                {card.rank}
+                <i>{sym}</i>
+              </span>
+            </>
+          )}
+        </span>
+      </span>
     </span>
   );
 }

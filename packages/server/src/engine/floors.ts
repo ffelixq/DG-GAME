@@ -33,6 +33,11 @@ export function endRound(state: RoomState, rctx: ReduceCtx): void {
     topWinnerSeatId: topWinner,
     topLoserSeatId: topLoser,
   };
+  // any games still in progress are cut off: refund their reserved stakes and clear the tables
+  state.bank.reserved = 0;
+  state.sessions = {};
+  for (const s of seats) s.activeSessionId = null;
+
   state.phase = 'roundResults';
   addTicker(state, passed ? '✅ Quota met!' : '❌ Quota missed', passed ? 'win' : 'loss', rctx.now);
 }

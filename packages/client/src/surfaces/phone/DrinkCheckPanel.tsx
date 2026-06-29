@@ -37,7 +37,7 @@ export function DrinkCheckPanel({ seatId, dc }: { seatId: SeatId; dc: DrinkCheck
       ) : (
         <>
           <p className="muted" style={{ textAlign: 'center' }}>
-            You picked up <b>{total}</b> drink{total === 1 ? '' : 's'}. Take up to <b>{budget}</b> now — tap one to drink it. The rest carry to the next check.
+            You picked up <b>{total}</b> drink{total === 1 ? '' : 's'}. Drink up to <b>{budget}</b> <b>now</b> — tap to drink. Anything you don't drink is cleared (no carry-over).
           </p>
           <div className="drink-tokens">
             {dc.tokens.map((t) => {
@@ -46,13 +46,13 @@ export function DrinkCheckPanel({ seatId, dc }: { seatId: SeatId; dc: DrinkCheck
               return (
                 <button key={t.id} className={`drink-token ${on ? 'on' : ''}`} disabled={disabled} onClick={() => toggle(t.id)}>
                   <span className="dt-emoji">🍺</span>
-                  <span className="dt-label">{on ? 'Drink now' : 'Carry →'}</span>
+                  <span className="dt-label">{on ? 'Drink now' : 'Cleared'}</span>
                 </button>
               );
             })}
           </div>
           <div className="drink-summary">
-            Drinking <b>{selected.size}</b> now{carrying > 0 ? <> · <b>{carrying}</b> carrying over</> : null}
+            Drinking <b>{selected.size}</b> now{carrying > 0 ? <> · <b>{carrying}</b> cleared</> : null}
           </div>
         </>
       )}

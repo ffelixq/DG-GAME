@@ -20,7 +20,7 @@ export interface FloorConfig {
   eventPool: EventId[];
 }
 
-const FIVE_MIN = 5 * 60 * 1000;
+const SEC = 1000;
 const ALL_GAMES: GameKind[] = ['blackjack', 'poker3', 'roulette', 'diceDuel', 'slots', 'coinflip', 'wheel', 'highcard'];
 
 export const FLOORS: readonly FloorConfig[] = [
@@ -28,8 +28,8 @@ export const FLOORS: readonly FloorConfig[] = [
     index: 1,
     name: 'Lobby Casino',
     quota: 1500,
-    roundMs: FIVE_MIN,
-    drinkCheckIntervalMs: 60 * 1000,
+    roundMs: 150 * SEC,
+    drinkCheckIntervalMs: 45 * SEC,
     eventsEnabled: false,
     eventFrequencyMs: 0,
     minBet: 50,
@@ -44,8 +44,8 @@ export const FLOORS: readonly FloorConfig[] = [
     index: 2,
     name: 'Neon Bar',
     quota: 3000,
-    roundMs: FIVE_MIN,
-    drinkCheckIntervalMs: 60 * 1000,
+    roundMs: 180 * SEC,
+    drinkCheckIntervalMs: 45 * SEC,
     eventsEnabled: true,
     eventFrequencyMs: 30 * 1000,
     minBet: 50,
@@ -77,8 +77,8 @@ export const FLOORS: readonly FloorConfig[] = [
     index: 3,
     name: 'VIP Lounge',
     quota: 6000,
-    roundMs: FIVE_MIN,
-    drinkCheckIntervalMs: 45 * 1000,
+    roundMs: 180 * SEC,
+    drinkCheckIntervalMs: 40 * SEC,
     eventsEnabled: true,
     eventFrequencyMs: 25 * 1000,
     minBet: 100,
@@ -117,8 +117,8 @@ export const FLOORS: readonly FloorConfig[] = [
     index: 4,
     name: 'Loan Shark Penthouse',
     quota: 10000,
-    roundMs: FIVE_MIN,
-    drinkCheckIntervalMs: 45 * 1000,
+    roundMs: 210 * SEC,
+    drinkCheckIntervalMs: 40 * SEC,
     eventsEnabled: true,
     eventFrequencyMs: 20 * 1000,
     minBet: 200,

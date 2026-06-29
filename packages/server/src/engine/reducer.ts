@@ -244,6 +244,15 @@ function apply(state: RoomState, cmd: Command, ctx: ReduceCtx, effects: SideEffe
       return ok({});
     }
 
+    case 'endRoundNow': {
+      const hostErr = requireHost(state, cmd.deviceId);
+      if (hostErr) return hostErr;
+      if (state.phase !== 'playing') return err('WRONG_PHASE', 'No round in progress.');
+      endRound(state, ctx);
+      out.changed = true;
+      return ok({});
+    }
+
     case 'playAgain': {
       const hostErr = requireHost(state, cmd.deviceId);
       if (hostErr) return hostErr;

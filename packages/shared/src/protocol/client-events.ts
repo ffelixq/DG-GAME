@@ -118,6 +118,7 @@ export interface ClientToServerEvents {
   'control:advance': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
   'control:pause': (p: PausePayload, ack: Ack<Record<string, never>>) => void;
   'control:skip': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
+  'control:endRound': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
   'control:playAgain': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
   'sync:request': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
 }

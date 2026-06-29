@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PrivateGameView, ResultSummary, SeatId } from '@lcc/shared';
+import type { BetSelection, PrivateGameView, ResultSummary, SeatId } from '@lcc/shared';
 import { useConn } from '../../../net/connection';
 import { PlayingCard } from '../../../ui/PlayingCard';
 
@@ -8,16 +8,30 @@ const SPIN_MS = 1900;
 const DICE = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 const REEL_SYMS = ['🍒', '🍋', '🔔', '💎', '7️⃣'];
 
-function Wheel({ spinning, num, color }: { spinning: boolean; num: number | null; color: string | null }) {
-  const tone = color === 'red' ? '#ff6b6b' : color === 'green' ? 'var(--lcc-good)' : 'var(--lcc-ink)';
+const TURNS = 5;
+/** Rotation that lands the result's colour segment under the top pointer (so the wheel really lands). */
+function landRotation(prev: number, color?: string, num?: number): number {
+  let center = 0; // green / generic -> top
+  if (color === 'red') center = 9 + 36 * ((num ?? 0) % 10);
+  else if (color === 'black') center = 27 + 36 * ((num ?? 0) % 10);
+  const base = Math.ceil((prev + 1) / 360) * 360;
+  return base + TURNS * 360 + ((360 - (center % 360)) % 360);
+}
+
+function Wheel({ spinning, result }: { spinning: boolean; result?: { number: number; color: string } }) {
+  const [rot, setRot] = useState(0);
+  useEffect(() => {
+    if (spinning) setRot((prev) => landRotation(prev, result?.color, result?.number));
+  }, [spinning, result?.number, result?.color]);
+  const tone = result?.color === 'red' ? '#ff6b6b' : result?.color === 'green' ? 'var(--lcc-good)' : '#fff';
   return (
     <div className="wheel-wrap">
-      <div className={`wheel ${spinning ? 'spinning' : ''}`} />
-      <div className="wheel-ball" />
-      {!spinning && num !== null && (
+      <div className="wheel" style={{ transform: `rotate(${rot}deg)`, transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.15, 0.62, 0.18, 1)` : 'none' }} />
+      <div className={`wheel-ball ${spinning ? 'orbit' : ''}`} />
+      {!spinning && result && (
         <div className="wheel-center">
           <span className="num" style={{ color: tone }}>
-            {num}
+            {result.number}
           </span>
         </div>
       )}
@@ -60,18 +74,21 @@ function ResultBanner({ result, onAgain, onBack }: { result: ResultSummary | nul
 }
 
 export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: Spinnable; result: ResultSummary | null }) {
-  const { act } = useConn();
+  const { act, call, freezeBank } = useConn();
   const [spinning, setSpinning] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(timer.current), []);
 
   function spin() {
+    freezeBank(); // hold the bank meter steady until the wheel/reels reveal
     setSpinning(true);
     void act('game:action', { seatId, action: { kind: 'spin' } });
     timer.current = setTimeout(() => setSpinning(false), SPIN_MS);
   }
 
   const stage: 'bet' | 'spin' | 'result' = spinning ? 'spin' : view.phase === 'done' ? 'result' : 'bet';
+  const again = () => act('game:action', { seatId, action: { kind: 'replay' } });
+  const back = () => act('game:dismiss', { seatId });
 
   if (view.kind === 'roulette') {
     const betting =
@@ -80,9 +97,14 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
         : view.selection.kind === 'straightUp'
           ? `Betting #${view.selection.number} (10×)`
           : '';
+    // change selection and immediately spin again (no trip back to the menu)
+    async function respinWith(selection: BetSelection) {
+      await call('game:dismiss', { seatId });
+      await call('game:start', { seatId, kind: 'roulette', bet: view.bet, selection });
+    }
     return (
       <div className="game-area" style={{ textAlign: 'center' }}>
-        <Wheel spinning={stage === 'spin'} num={stage === 'result' ? (view.result?.number ?? 0) : null} color={view.result?.color ?? null} />
+        <Wheel spinning={stage === 'spin'} result={view.result} />
         {stage === 'bet' && (
           <>
             <p className="muted">{betting}</p>
@@ -92,7 +114,26 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
           </>
         )}
         {stage === 'spin' && <p className="muted">No more bets…</p>}
-        {stage === 'result' && <ResultBanner result={result} onAgain={() => act('game:action', { seatId, action: { kind: 'replay' } })} onBack={() => act('game:dismiss', { seatId })} />}
+        {stage === 'result' && (
+          <>
+            {result && <div className={`result-banner reveal ${result.won ? 'win' : 'loss'}`}>{result.text}</div>}
+            <p className="muted">Spin again — pick your bet:</p>
+            <div className="row" style={{ flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button className="chip" onClick={() => respinWith({ kind: 'rb', color: 'red' })}>
+                🔴 Red
+              </button>
+              <button className="chip" onClick={() => respinWith({ kind: 'rb', color: 'black' })}>
+                ⚫ Black
+              </button>
+              <button className="chip sel" onClick={again}>
+                🔄 Same bet
+              </button>
+            </div>
+            <button className="btn btn--ghost btn--block" onClick={back}>
+              ← Back to games
+            </button>
+          </>
+        )}
       </div>
     );
   }
@@ -131,15 +172,12 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
         {stage === 'result' && dice && (
           <>
             <p className="total-badge">= {dice[0] + dice[1]}</p>
-            <ResultBanner result={result} onAgain={() => act('game:action', { seatId, action: { kind: 'replay' } })} onBack={() => act('game:dismiss', { seatId })} />
+            <ResultBanner result={result} onAgain={again} onBack={back} />
           </>
         )}
       </div>
     );
   }
-
-  const again = () => act('game:action', { seatId, action: { kind: 'replay' } });
-  const back = () => act('game:dismiss', { seatId });
 
   if (view.kind === 'coinflip') {
     const flipped = view.result?.side;
@@ -166,7 +204,7 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
   if (view.kind === 'wheel') {
     return (
       <div className="game-area" style={{ textAlign: 'center' }}>
-        <Wheel spinning={stage === 'spin'} num={null} color={null} />
+        <Wheel spinning={stage === 'spin'} />
         {stage === 'bet' && (
           <>
             <p className="muted">Spin for up to 20×! (${view.bet})</p>
@@ -227,7 +265,7 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
         </>
       )}
       {stage === 'spin' && <p className="muted">🎰 spinning…</p>}
-      {stage === 'result' && <ResultBanner result={result} onAgain={() => act('game:action', { seatId, action: { kind: 'replay' } })} onBack={() => act('game:dismiss', { seatId })} />}
+      {stage === 'result' && <ResultBanner result={result} onAgain={again} onBack={back} />}
     </div>
   );
 }

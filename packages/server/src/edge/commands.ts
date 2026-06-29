@@ -25,6 +25,8 @@ export function commandForEvent(ev: keyof ClientToServerEvents, p: any, deviceId
       return { t: 'pause', deviceId, value: p.value };
     case 'control:skip':
       return { t: 'skip', deviceId };
+    case 'control:endRound':
+      return { t: 'endRoundNow', deviceId };
     case 'control:playAgain':
       return { t: 'playAgain', deviceId };
     case 'game:start':

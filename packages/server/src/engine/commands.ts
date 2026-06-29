@@ -25,6 +25,7 @@ export type Command =
   | { t: 'advance'; deviceId: DeviceId }
   | { t: 'pause'; deviceId: DeviceId; value: boolean }
   | { t: 'skip'; deviceId: DeviceId }
+  | { t: 'endRoundNow'; deviceId: DeviceId }
   | { t: 'playAgain'; deviceId: DeviceId }
   | { t: 'startGame'; deviceId: DeviceId; seatId: SeatId; kind: GameKind; bet: Money; selection?: BetSelection }
   | { t: 'gameAction'; deviceId: DeviceId; seatId: SeatId; action: GameAction }

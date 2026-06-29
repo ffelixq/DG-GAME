@@ -101,15 +101,14 @@ describe('Drink Check resolver', () => {
     expect((res as { code: string }).code).toBe('CAP_EXCEEDED');
   });
 
-  it('skip carries tokens forward, never auto-alcohol', () => {
+  it('skip clears tokens (no carry-forward), never auto-alcohol', () => {
     const { room, pa, a, clock } = playingRoom();
     giveAlcohol(room.state, a, 2, clock.now());
     openCheck(room, clock);
     const res = room.dispatch({ t: 'skipDrinkCheck', deviceId: pa, seatId: a });
     expect(res.ok).toBe(true);
-    const toks = room.state.seats[a]!.tokenIds.map((id) => room.state.tokens[id]!);
-    expect(toks).toHaveLength(2);
-    expect(toks.every((t) => t.carries === 1)).toBe(true);
+    // tokens are cleared, not carried — and nobody was forced to drink alcohol
+    expect(room.state.seats[a]!.tokenIds).toHaveLength(0);
     // closing the check returns to play
     expect(room.state.phase).toBe('playing');
   });

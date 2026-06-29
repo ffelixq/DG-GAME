@@ -40,6 +40,9 @@ export interface Conn {
   act: (ev: string, payload: unknown) => void;
   pushToast: (tone: TickerTone, text: string) => void;
   dismissToast: (id: number) => void;
+  /** Freeze the displayed bank for a moment so a spin's result isn't spoiled before the reveal. */
+  freezeBank: () => void;
+  bankFreeze: { until: number; value: number } | null;
   reset: () => void;
 }
 
@@ -64,6 +67,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   const [lastAction, setLastAction] = useState<'create' | 'join' | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [serverOffset, setServerOffset] = useState(0);
+  const [bankFreeze, setBankFreeze] = useState<{ until: number; value: number } | null>(null);
   const toastSeq = useRef(0);
 
   const pushToast = useCallback((tone: TickerTone, text: string) => {
@@ -135,6 +139,10 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
         });
       },
       pushToast,
+      freezeBank() {
+        setBankFreeze({ until: Date.now() + 2300, value: pub?.bank ?? 0 });
+      },
+      bankFreeze,
       dismissToast(id: number) {
         setToasts((t) => t.filter((x) => x.id !== id));
       },
@@ -147,7 +155,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
         setPriv(null);
       },
     }),
-    [deviceId, connected, pub, priv, joined, lastAction, toasts, serverOffset, conn, pushToast],
+    [deviceId, connected, pub, priv, joined, lastAction, toasts, serverOffset, conn, pushToast, bankFreeze],
   );
 
   return <ConnContext.Provider value={value}>{children}</ConnContext.Provider>;

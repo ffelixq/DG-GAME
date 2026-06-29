@@ -68,16 +68,16 @@ export function openDrinkCheck(state: RoomState, rctx: ReduceCtx): void {
   maybeCloseCheck(state, rctx);
 }
 
-/** Carry every still-pending token forward; convert to water once it has survived too long. */
+/** No carry-forward: any token not drunk THIS check is cleared (resolved, gone) — drink it now or lose it. */
 function finalizeSeat(state: RoomState, dcs: DrinkCheckSeatState): void {
   for (const tid of dcs.pendingTokenIds) {
     const t = state.tokens[tid];
     if (!t || t.status !== 'pending') continue;
-    t.carries += 1;
-    if (t.carries > MAX_CARRY) {
-      t.kind = 'water';
-      t.carries = 0;
-    }
+    t.status = 'resolved';
+    t.resolvedAs = 'water';
+    const seat = state.seats[t.ownerSeatId];
+    if (seat) seat.tokenIds = seat.tokenIds.filter((id) => id !== tid);
+    delete state.tokens[tid];
   }
   dcs.pendingTokenIds = [];
   dcs.done = true;
