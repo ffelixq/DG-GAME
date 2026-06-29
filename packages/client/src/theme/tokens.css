@@ -25,6 +25,9 @@
   --lcc-tap: 56px;
   --lcc-radius: 16px;
 
+  /* animation speed multiplier (set per-device; higher = faster) */
+  --anim-speed: 1;
+
   color-scheme: dark;
 }
 

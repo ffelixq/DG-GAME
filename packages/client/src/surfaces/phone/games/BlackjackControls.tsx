@@ -1,6 +1,6 @@
 import type { GameAction, PrivateGameView, PublicRoomView, ResultSummary, SeatId } from '@lcc/shared';
 import { useConn } from '../../../net/connection';
-import { PlayingCard } from '../../../ui/PlayingCard';
+import { Deck, PlayingCard } from '../../../ui/PlayingCard';
 
 type BJ = Extract<PrivateGameView, { kind: 'blackjack' }>;
 
@@ -13,10 +13,11 @@ export function BlackjackControls({ seatId, view, result, pub }: { seatId: SeatI
 
   return (
     <div className={`game-area ${done ? 'reveal' : ''}`}>
-      {/* dealer */}
+      {/* dealer + draw pile */}
       <div className="hand-row">
         <span className="label">Dealer{done ? '' : view.dealer.length ? ' shows' : ''}</span>
-        <span className="hand">
+        <span className="hand" style={{ alignItems: 'flex-start' }}>
+          <Deck />
           {view.dealer.map((c, i) => (
             <PlayingCard key={i} card={c} className={done && i >= 1 ? 'flip' : ''} delayMs={Math.min(i, 4) * 95} />
           ))}

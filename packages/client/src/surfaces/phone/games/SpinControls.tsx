@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BetSelection, PrivateGameView, ResultSummary, SeatId } from '@lcc/shared';
 import { useConn } from '../../../net/connection';
-import { PlayingCard } from '../../../ui/PlayingCard';
+import { Deck, PlayingCard } from '../../../ui/PlayingCard';
+import { getAnimSpeed } from '../../../ui/anim';
 
 type Spinnable = Extract<PrivateGameView, { kind: 'roulette' | 'diceDuel' | 'slots' | 'coinflip' | 'wheel' | 'highcard' }>;
-const SPIN_MS = 1900;
+const SPIN_BASE_MS = 1900;
 const DICE = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 const REEL_SYMS = ['🍒', '🍋', '🔔', '💎', '7️⃣'];
 
@@ -26,7 +27,7 @@ function Wheel({ spinning, result }: { spinning: boolean; result?: { number: num
   const tone = result?.color === 'red' ? '#ff6b6b' : result?.color === 'green' ? 'var(--lcc-good)' : '#fff';
   return (
     <div className="wheel-wrap">
-      <div className="wheel" style={{ transform: `rotate(${rot}deg)`, transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.15, 0.62, 0.18, 1)` : 'none' }} />
+      <div className="wheel" style={{ transform: `rotate(${rot}deg)`, transition: spinning ? `transform ${SPIN_BASE_MS / getAnimSpeed()}ms cubic-bezier(0.15, 0.62, 0.18, 1)` : 'none' }} />
       <div className={`wheel-ball ${spinning ? 'orbit' : ''}`} />
       {!spinning && result && (
         <div className="wheel-center">
@@ -83,7 +84,7 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
     freezeBank(); // hold the bank meter steady until the wheel/reels reveal
     setSpinning(true);
     void act('game:action', { seatId, action: { kind: 'spin' } });
-    timer.current = setTimeout(() => setSpinning(false), SPIN_MS);
+    timer.current = setTimeout(() => setSpinning(false), SPIN_BASE_MS / getAnimSpeed());
   }
 
   const stage: 'bet' | 'spin' | 'result' = spinning ? 'spin' : view.phase === 'done' ? 'result' : 'bet';
@@ -230,7 +231,8 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
       <div className="game-area" style={{ textAlign: 'center' }}>
         <div className="hand-row">
           <span className="label">You vs Dealer</span>
-          <span className="hand">
+          <span className="hand" style={{ alignItems: 'flex-start' }}>
+            <Deck />
             {stage === 'result' && res ? <PlayingCard card={res.player} /> : <PlayingCard hidden />}
             <span style={{ alignSelf: 'center', fontWeight: 800 }}>vs</span>
             {stage === 'result' && res ? <PlayingCard card={res.dealer} /> : <PlayingCard hidden />}

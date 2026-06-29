@@ -1,6 +1,6 @@
 import type { GameAction, HoldemStreet, PrivateGameView, PublicRoomView, ResultSummary, SeatId } from '@lcc/shared';
 import { useConn } from '../../../net/connection';
-import { Hand } from '../../../ui/PlayingCard';
+import { Deck, Hand } from '../../../ui/PlayingCard';
 
 type Poker = Extract<PrivateGameView, { kind: 'poker3' }>;
 const STREET: Record<HoldemStreet, string> = { preflop: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River' };
@@ -21,10 +21,13 @@ export function PokerControls({ seatId, view, result, pub }: { seatId: SeatId; v
         <span className="pot-count">{view.pot} drink{view.pot === 1 ? '' : 's'} on the line</span>
       </div>
 
-      {/* community */}
+      {/* community + draw pile */}
       <div className="hand-row">
         <span className="label">Board · {STREET[view.street]}</span>
-        {view.community.length > 0 ? <Hand cards={view.community} /> : <span className="muted">— no cards yet —</span>}
+        <span className="hand" style={{ alignItems: 'flex-start' }}>
+          <Deck />
+          {view.community.length > 0 ? <Hand cards={view.community} /> : <span className="muted" style={{ alignSelf: 'center' }}>— flop, turn, river —</span>}
+        </span>
       </div>
 
       {/* your hand */}

@@ -4,6 +4,9 @@ import './theme/tokens.css';
 import './ui/ui.css';
 import { App } from './App';
 import { ConnectionProvider } from './net/connection';
+import { applyAnimSpeed } from './ui/anim';
+
+applyAnimSpeed(); // restore the saved animation-speed preference
 
 const rootEl = document.getElementById('root');
 if (!rootEl) throw new Error('#root not found');

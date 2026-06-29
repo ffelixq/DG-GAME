@@ -6,6 +6,7 @@ import { Roster } from '../../ui/Roster';
 import { Hand } from '../../ui/PlayingCard';
 import { Confetti } from '../../ui/Confetti';
 import { HowToPlay } from '../../ui/HowToPlay';
+import { SpeedControl } from '../../ui/SpeedControl';
 
 export function BoardApp() {
   const { pub } = useConn();
@@ -120,7 +121,10 @@ function BoardLobby({ pub }: { pub: PublicRoomView }) {
         ) : (
           <p className="tag">Waiting for the host to start…</p>
         )}
-        <HowToPlay className="btn btn--ghost" />
+        <div className="row" style={{ justifyContent: 'center' }}>
+          <HowToPlay className="btn btn--ghost" />
+          <SpeedControl className="btn btn--ghost" />
+        </div>
       </div>
     </div>
   );

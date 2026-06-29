@@ -1,4 +1,5 @@
 import { SUIT_SYMBOL, type Card } from '@lcc/shared';
+import { getAnimSpeed } from './anim';
 
 export function PlayingCard({
   card,
@@ -38,12 +39,26 @@ export function PlayingCard({
   );
 }
 
+/** A visible draw pile the cards are dealt from. */
+export function Deck({ label = 'DECK' }: { label?: string }) {
+  return (
+    <span className="deck" aria-hidden="true" title="Draw pile">
+      <span className="deck-stack">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className="deck-card" style={{ transform: `translate(${i * 1.5}px, ${-i * 1.5}px)` }} />
+        ))}
+      </span>
+      <span className="deck-label">{label}</span>
+    </span>
+  );
+}
+
 /** Renders a hand with a one-by-one "dealing" stagger (capped so late hits don't lag). */
 export function Hand({ cards, hideFrom }: { cards: Card[]; hideFrom?: number }) {
   return (
     <span className="hand">
       {cards.map((c, i) => (
-        <PlayingCard key={i} card={c} hidden={hideFrom !== undefined && i >= hideFrom} delayMs={Math.min(i, 4) * 95} />
+        <PlayingCard key={i} card={c} hidden={hideFrom !== undefined && i >= hideFrom} delayMs={(Math.min(i, 4) * 95) / getAnimSpeed()} />
       ))}
     </span>
   );

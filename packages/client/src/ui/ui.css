@@ -481,14 +481,14 @@
   width: 48px;
   height: 67px;
   perspective: 700px;
-  animation: card-deal 0.4s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  animation: card-deal calc(0.4s / var(--anim-speed, 1)) cubic-bezier(0.2, 0.9, 0.25, 1) both;
   flex: 0 0 auto;
 }
 .pcard-inner {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform calc(0.5s / var(--anim-speed, 1)) cubic-bezier(0.4, 0, 0.2, 1);
   transform: rotateY(180deg); /* back showing by default */
 }
 .pcard-inner.up {
@@ -561,13 +561,43 @@
 }
 @keyframes card-deal {
   from {
-    transform: translateY(-52px) translateX(22px) rotate(-16deg);
+    transform: translateY(-52px) translateX(40px) rotate(-16deg);
     opacity: 0;
   }
   to {
     transform: none;
     opacity: 1;
   }
+}
+
+/* a visible draw pile the cards come off of */
+.deck {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+.deck-stack {
+  position: relative;
+  width: 48px;
+  height: 67px;
+}
+.deck-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 45, 149, 0.28) 0 5px, transparent 5px 10px),
+    repeating-linear-gradient(-45deg, rgba(21, 244, 238, 0.18) 0 5px, transparent 5px 10px),
+    linear-gradient(135deg, var(--lcc-purple), #2a1150);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+.deck-label {
+  font-family: var(--lcc-font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--lcc-ink-dim);
 }
 
 /* game area */
@@ -860,7 +890,7 @@
 }
 .wheel-ball.orbit {
   transform-origin: 7px 100px;
-  animation: ball-orbit 0.45s linear infinite;
+  animation: ball-orbit calc(0.45s / var(--anim-speed, 1)) linear infinite;
 }
 @keyframes ball-orbit {
   to {
@@ -932,7 +962,7 @@
   line-height: 84px;
 }
 .reel.spinning .reel-strip {
-  animation: reel-spin 0.14s linear infinite;
+  animation: reel-spin calc(0.14s / var(--anim-speed, 1)) linear infinite;
   filter: blur(1.5px);
 }
 @keyframes reel-spin {
@@ -976,7 +1006,7 @@
   animation: pop-in 0.4s cubic-bezier(0.2, 1.5, 0.4, 1) both;
 }
 .coin.flipping {
-  animation: coin-flip 0.42s ease-in-out infinite;
+  animation: coin-flip calc(0.42s / var(--anim-speed, 1)) ease-in-out infinite;
 }
 @keyframes coin-flip {
   0% {
@@ -1010,7 +1040,7 @@
   animation: pop-in 0.4s cubic-bezier(0.2, 1.5, 0.4, 1) both;
 }
 .die.rolling {
-  animation: dice-roll 0.4s linear infinite;
+  animation: dice-roll calc(0.4s / var(--anim-speed, 1)) linear infinite;
 }
 @keyframes dice-roll {
   0% {

@@ -4,6 +4,7 @@ import { useConn } from '../../net/connection';
 import { Roster } from '../../ui/Roster';
 import { Confetti } from '../../ui/Confetti';
 import { HowToPlay } from '../../ui/HowToPlay';
+import { SpeedControl } from '../../ui/SpeedControl';
 import { PhonePlay } from './PhonePlay';
 
 export function PhoneApp() {
@@ -154,8 +155,9 @@ function PhoneLobby({ pub }: { pub: PublicRoomView }) {
           Waiting for the host to start…
         </p>
       )}
-      <div style={{ textAlign: 'center' }}>
+      <div className="spread" style={{ justifyContent: 'center', gap: '1rem' }}>
         <HowToPlay />
+        <SpeedControl />
       </div>
     </div>
   );
