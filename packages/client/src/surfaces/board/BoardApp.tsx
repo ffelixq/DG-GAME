@@ -110,6 +110,12 @@ function BoardLobby({ pub }: { pub: PublicRoomView }) {
         <p className="muted">Scan, or open the site and enter the code.</p>
         <Roster seats={pub.seats} onKick={isHost ? (id) => act('seat:remove', { seatId: id }) : undefined} />
         <div className="row" style={{ justifyContent: 'center' }}>
+          <button className={`chip ${pub.mode === 'money' ? 'sel' : ''}`} disabled={!isHost} onClick={() => act('room:setMode', { mode: 'money' })}>
+            💰 Money
+          </button>
+          <button className={`chip ${pub.mode === 'drinks' ? 'sel' : ''}`} disabled={!isHost} onClick={() => act('room:setMode', { mode: 'drinks' })}>
+            🍺 Drinks
+          </button>
           <button className="btn btn--ghost" onClick={() => act('seat:addBot', {})}>
             🤖 Add a bot
           </button>
@@ -302,15 +308,22 @@ function BoardPlay({ pub }: { pub: PublicRoomView }) {
         <div className={`timer ${remaining < 30000 ? 'low' : ''}`}>{formatClock(remaining)}</div>
       </div>
 
-      <div>
+      {pub.mode === 'drinks' ? (
         <div className="bank-line">
-          <span>Bank: ${pub.bank.toLocaleString()}</span>
-          <span className="quota">Quota: ${pub.quota.toLocaleString()}</span>
+          <span>🍺 Drinks night</span>
+          <span className="quota">lose a game → take a drink</span>
         </div>
-        <div className="bank-meter">
-          <div className="fill" style={{ width: `${pct}%` }} />
+      ) : (
+        <div>
+          <div className="bank-line">
+            <span>Bank: ${pub.bank.toLocaleString()}</span>
+            <span className="quota">Quota: ${pub.quota.toLocaleString()}</span>
+          </div>
+          <div className="bank-meter">
+            <div className="fill" style={{ width: `${pct}%` }} />
+          </div>
         </div>
-      </div>
+      )}
 
       <Roster seats={pub.seats} showTokens />
 

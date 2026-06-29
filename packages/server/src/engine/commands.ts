@@ -17,6 +17,7 @@ export type Command =
   | { t: 'attachDevice'; deviceId: DeviceId; socketId: string }
   | { t: 'detachDevice'; deviceId: DeviceId }
   | { t: 'setBigScreen'; deviceId: DeviceId; value: boolean }
+  | { t: 'setMode'; deviceId: DeviceId; mode: 'money' | 'drinks' }
   | { t: 'addSeat'; deviceId: DeviceId; name: string }
   | { t: 'addBot'; deviceId: DeviceId }
   | { t: 'removeSeat'; deviceId: DeviceId; seatId: SeatId }

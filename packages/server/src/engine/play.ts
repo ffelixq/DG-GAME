@@ -199,6 +199,22 @@ export function settleSession(state: RoomState, session: ActiveSession, rctx: Re
     }
   }
 
+  // Per-room mode keeps money and drinking from mixing:
+  //  - money mode: real money, but a game LOSS never makes you drink (drop game-source alcohol)
+  //  - drinks mode: no money moves at all (refund the stake); a loss makes you drink instead
+  if (state.mode === 'money') {
+    outcome.mints = outcome.mints.filter((m) => !(m.kind === 'alcohol' && m.source === 'game'));
+    outcome.pendingChoices = outcome.pendingChoices.filter((pc) => pc.kind !== 'give-token');
+  } else {
+    releaseReserve(state.bank, session.reserved);
+    outcome = {
+      ...outcome,
+      bankDeltas: [],
+      statEvents: outcome.statEvents.filter((e) => e.event.field !== 'netBank'),
+      summary: { won: outcome.summary.won, bankDelta: 0, text: outcome.summary.won ? 'You win — safe! 🎉' : 'You lose — drink! 🍺' },
+    };
+  }
+
   outcome.bankDeltas.forEach((d, i) => {
     settle(state.bank, d.seatId, i === 0 ? session.reserved : 0, d.delta, rctx.now, session.kind);
   });

@@ -134,6 +134,7 @@ export function projectPublic(state: RoomState, now: number): PublicRoomView {
     version: state.version,
     code: state.code,
     phase: state.phase,
+    mode: state.mode,
     paused: state.paused,
     floor: state.currentFloor,
     floorName: cfg.name,

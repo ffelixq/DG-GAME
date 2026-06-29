@@ -241,28 +241,45 @@ function resolveTable(state: RoomState, session: { id: string; data: unknown; re
     }
     entry.outcome = result;
 
-    settle(state.bank, entry.seatId, entry.reserved, delta, rctx.now, 'blackjack');
+    // money mode: cash settles, a loss never makes you drink.
+    // drinks mode: no money moves (refund the stake), a loss makes you drink instead.
+    const money = state.mode === 'money';
+    if (money) {
+      settle(state.bank, entry.seatId, entry.reserved, delta, rctx.now, 'blackjack');
+      applyStatEvent(seat.stats, { field: 'netBank', value: delta });
+      if (entry.allIn) applyStatEvent(seat.stats, { field: 'allIns', value: 1 });
+    } else {
+      releaseReserve(state.bank, entry.reserved);
+    }
     applyStatEvent(seat.stats, { field: 'plays', value: 1 });
-    applyStatEvent(seat.stats, { field: 'netBank', value: delta });
-    if (entry.allIn) applyStatEvent(seat.stats, { field: 'allIns', value: 1 });
 
     let streak = seat.gameMemory.blackjackWinStreak;
     if (result === 'win') {
       streak += 1;
       applyStatEvent(seat.stats, { field: 'gamesWon', value: 1 });
       if (naturalWin) removeTokens(state, entry.seatId, 1);
-      if (streak >= 3) {
+      if (!money && streak >= 3) {
         const others = data.entries.map((e) => e.seatId).filter((id) => id !== entry.seatId);
         if (others.length > 0) mint(state, { ownerSeatId: rctx.rng.pick(others), originSeatId: entry.seatId, count: 1, kind: 'alcohol', source: 'game', reason: 'blackjack.streak3' }, tokenCtx);
         streak = 0;
       }
-      seat.lastGame = { summary: { won: true, bankDelta: delta, text: naturalWin ? `Blackjack! +$${delta}` : `Won $${delta}` }, at: rctx.now };
+      seat.lastGame = {
+        summary: money
+          ? { won: true, bankDelta: delta, text: naturalWin ? `Blackjack! +$${delta}` : `Won $${delta}` }
+          : { won: true, bankDelta: 0, text: naturalWin ? 'Blackjack — safe! 🎉' : 'You win — safe! 🎉' },
+        at: rctx.now,
+      };
     } else if (result === 'lose') {
       streak = 0;
       applyStatEvent(seat.stats, { field: 'gamesLost', value: 1 });
-      applyStatEvent(seat.stats, { field: 'biggestSingleLoss', value: -delta, mode: 'max' });
-      mint(state, { ownerSeatId: entry.seatId, originSeatId: 'system', count: entry.doubled || entry.allIn ? 2 : 1, kind: 'alcohol', source: 'game', reason: pv.bust ? 'blackjack.bust' : 'blackjack.loss' }, tokenCtx);
-      seat.lastGame = { summary: { won: false, bankDelta: delta, text: pv.bust ? `Bust! −$${-delta}` : `Lost $${-delta}` }, at: rctx.now };
+      if (money) applyStatEvent(seat.stats, { field: 'biggestSingleLoss', value: -delta, mode: 'max' });
+      else mint(state, { ownerSeatId: entry.seatId, originSeatId: 'system', count: entry.doubled || entry.allIn ? 2 : 1, kind: 'alcohol', source: 'game', reason: pv.bust ? 'blackjack.bust' : 'blackjack.loss' }, tokenCtx);
+      seat.lastGame = {
+        summary: money
+          ? { won: false, bankDelta: delta, text: pv.bust ? `Bust! −$${-delta}` : `Lost $${-delta}` }
+          : { won: false, bankDelta: 0, text: pv.bust ? 'Bust — drink! 🍺' : 'You lose — drink! 🍺' },
+        at: rctx.now,
+      };
     } else {
       seat.lastGame = { summary: { won: false, bankDelta: 0, text: 'Push' }, at: rctx.now };
     }

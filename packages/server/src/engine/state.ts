@@ -75,6 +75,7 @@ export function createInitialRoom(code: RoomCode, hostDeviceId: DeviceId, now: n
   return {
     code,
     phase: 'lobby',
+    mode: 'money',
     paused: false,
     pauseAccumMs: 0,
     pausedAt: null,

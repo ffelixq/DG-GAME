@@ -51,15 +51,14 @@ describe('play: blackjack through the reducer', () => {
     room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'deal' } }); // skip the join window
     room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'stand' } }); // (no-op if natural)
 
-    // settled: stake released, result recorded, bank moved by exactly the recorded delta
+    // settled: stake released, result recorded, bank moved by exactly the recorded delta.
+    // (default money mode: a loss costs cash but never mints a drink token.)
     expect(room.state.bank.reserved).toBe(0);
     const last = seat().lastGame;
     expect(last).not.toBeNull();
     expect(room.state.bank.balance).toBe(STARTING_BANK + last!.summary.bankDelta);
     const myTokens = seat().tokenIds.map((id) => room.state.tokens[id]!);
-    if (last!.summary.bankDelta < 0) {
-      expect(myTokens.some((t) => t.kind === 'alcohol')).toBe(true);
-    }
+    expect(myTokens.some((t) => t.kind === 'alcohol')).toBe(false);
 
     // the result is held on the reveal screen, then cleared back to the menu
     expect(seat().activeSessionId).not.toBeNull();

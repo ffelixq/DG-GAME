@@ -106,6 +106,15 @@ function apply(state: RoomState, cmd: Command, ctx: ReduceCtx, effects: SideEffe
       return ok({});
     }
 
+    case 'setMode': {
+      const hostErr = requireHost(state, cmd.deviceId);
+      if (hostErr) return hostErr;
+      if (state.phase !== 'lobby') return err('WRONG_PHASE', 'Pick the mode before starting.');
+      state.mode = cmd.mode;
+      out.changed = true;
+      return ok({});
+    }
+
     case 'addSeat': {
       const dev = state.devices[cmd.deviceId];
       if (!dev) return err('NOT_IN_ROOM', 'Unknown device.');

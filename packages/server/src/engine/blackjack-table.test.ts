@@ -64,36 +64,49 @@ describe('multiplayer blackjack table', () => {
     expect((session()?.data as { phase: string } | undefined)?.phase ?? 'done').not.toBe('joining');
   });
 
-  it('outcome sign + loss-token rule are consistent with the final hands (120 seeds)', () => {
+  function playOne(seed: number, mode: 'money' | 'drinks') {
+    const { room, pa, a } = playingRoom(seed);
+    room.state.mode = mode;
+    room.dispatch({ t: 'startGame', deviceId: pa, seatId: a, kind: 'blackjack', bet: 100 });
+    room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'deal' } });
+    room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'stand' } });
+    const view = projectPrivateForDevice(room.state, pa, 0)!.seats.find((s) => s.seatId === a)!.activeGame as Extract<
+      PrivateGameView,
+      { kind: 'blackjack' }
+    >;
+    const pv = evalBlackjackHand(view.hole);
+    const dv = evalBlackjackHand(view.dealer);
+    const natural = view.hole.length === 2 && pv.total === 21;
+    const dealerNat = view.dealer.length === 2 && dv.total === 21;
+    let expected: 'win' | 'lose' | 'push';
+    if (pv.bust) expected = 'lose';
+    else if (natural && !dealerNat) expected = 'win';
+    else if (dealerNat && !natural) expected = 'lose';
+    else if (dv.bust || pv.total > dv.total) expected = 'win';
+    else if (pv.total < dv.total) expected = 'lose';
+    else expected = 'push';
+    return { expected, room, a, won: room.state.seats[a]!.lastGame!.summary.won };
+  }
+
+  it('money mode: outcome moves the bank by the right sign and never makes you drink (120 seeds)', () => {
     for (let seed = 1; seed <= 120; seed++) {
-      const { room, pa, a } = playingRoom(seed);
-      room.dispatch({ t: 'startGame', deviceId: pa, seatId: a, kind: 'blackjack', bet: 100 });
-      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'deal' } });
-      room.dispatch({ t: 'gameAction', deviceId: pa, seatId: a, action: { kind: 'stand' } });
-
-      const view = projectPrivateForDevice(room.state, pa, 0)!.seats.find((s) => s.seatId === a)!.activeGame as Extract<
-        PrivateGameView,
-        { kind: 'blackjack' }
-      >;
-      const pv = evalBlackjackHand(view.hole);
-      const dv = evalBlackjackHand(view.dealer);
-      const natural = view.hole.length === 2 && pv.total === 21;
-      const dealerNat = view.dealer.length === 2 && dv.total === 21;
-      let expected: 'win' | 'lose' | 'push';
-      if (pv.bust) expected = 'lose';
-      else if (natural && !dealerNat) expected = 'win';
-      else if (dealerNat && !natural) expected = 'lose';
-      else if (dv.bust || pv.total > dv.total) expected = 'win';
-      else if (pv.total < dv.total) expected = 'lose';
-      else expected = 'push';
-
+      const { expected, room, a } = playOne(seed, 'money');
       const delta = room.state.seats[a]!.lastGame!.summary.bankDelta;
       const tokens = room.state.seats[a]!.tokenIds.map((id) => room.state.tokens[id]!);
       if (expected === 'win') expect(delta, `seed ${seed}`).toBeGreaterThan(0);
-      else if (expected === 'lose') {
-        expect(delta, `seed ${seed}`).toBeLessThan(0);
-        expect(tokens.some((t) => t.kind === 'alcohol'), `seed ${seed} should mint a token`).toBe(true);
-      } else expect(delta, `seed ${seed}`).toBe(0);
+      else if (expected === 'lose') expect(delta, `seed ${seed}`).toBeLessThan(0);
+      else expect(delta, `seed ${seed}`).toBe(0);
+      expect(tokens.some((t) => t.kind === 'alcohol'), `seed ${seed} money mode = no drink`).toBe(false);
+    }
+  });
+
+  it('drinks mode: a loss mints a drink and the bank never moves (120 seeds)', () => {
+    for (let seed = 1; seed <= 120; seed++) {
+      const { expected, room, a } = playOne(seed, 'drinks');
+      expect(room.state.seats[a]!.lastGame!.summary.bankDelta, `seed ${seed}`).toBe(0);
+      const tokens = room.state.seats[a]!.tokenIds.map((id) => room.state.tokens[id]!);
+      if (expected === 'lose') expect(tokens.some((t) => t.kind === 'alcohol'), `seed ${seed} should mint a drink`).toBe(true);
+      else expect(tokens.length, `seed ${seed} no drink unless you lose`).toBe(0);
     }
   });
 });

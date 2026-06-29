@@ -96,6 +96,10 @@ export interface TopUpPayload {
   seatId: SeatId;
 }
 
+export interface SetModePayload {
+  mode: 'money' | 'drinks';
+}
+
 // Socket.io client->server map. Every event carries an ack returning Result<...>.
 export interface ClientToServerEvents {
   'session:hello': (p: HelloPayload, ack: Ack<HelloResult>) => void;
@@ -119,6 +123,7 @@ export interface ClientToServerEvents {
   'control:pause': (p: PausePayload, ack: Ack<Record<string, never>>) => void;
   'control:skip': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
   'control:endRound': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
+  'room:setMode': (p: SetModePayload, ack: Ack<Record<string, never>>) => void;
   'control:playAgain': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
   'sync:request': (p: Record<string, never>, ack: Ack<Record<string, never>>) => void;
 }

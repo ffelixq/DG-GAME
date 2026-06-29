@@ -6,7 +6,8 @@ import { activeSeats, addTicker } from './state';
 /** End the current round: record a RoundResult and move to the results screen.
  *  Floor advancement / punishment / endings are layered on in M9/M10. */
 export function endRound(state: RoomState, rctx: ReduceCtx): void {
-  const passed = state.bank.balance >= state.bank.quota;
+  // drinks mode has no money quota — every round just advances (no pass/fail/punishment)
+  const passed = state.mode === 'drinks' || state.bank.balance >= state.bank.quota;
   const seats = activeSeats(state);
 
   let topWinner: SeatId | null = null;

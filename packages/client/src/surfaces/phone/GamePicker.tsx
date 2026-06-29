@@ -5,6 +5,7 @@ import { GAME_ICON } from '../../ui/gameMeta';
 
 export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomView }) {
   const { call, act } = useConn();
+  const drinksMode = pub.mode === 'drinks';
   const available = pub.bank - pub.reserved;
   const [kind, setKind] = useState<GameKind>(pub.games[0] ?? 'blackjack');
   const [bet, setBet] = useState<number>(Math.min(pub.bets.min, available));
@@ -17,8 +18,8 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
   const [busy, setBusy] = useState(false);
 
   const isPoker = kind === 'poker3';
-  if (available < pub.bets.min) {
-    // Bank's dry — the only way on is to drink to top it up.
+  if (!drinksMode && available < pub.bets.min) {
+    // Bank's dry — the only way on is to drink to top it up. (Money mode only.)
     return (
       <div className="card stack" style={{ textAlign: 'center', borderColor: 'var(--lcc-gold)' }}>
         <h2 className="h2">🍺 The bank's dry!</h2>
@@ -58,7 +59,8 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
   async function start() {
     setBusy(true);
     setError(null);
-    const wager = isPoker ? 0 : bet; // poker is drink-stakes — no money
+    // poker is always drink-stakes (0); drinks mode reserves the min (refunded on settle) so no money moves
+    const wager = isPoker ? 0 : drinksMode ? pub.bets.min : bet;
     const r = await call<{ sessionId: string }>('game:start', { seatId, kind, bet: wager, selection: selection() });
     setBusy(false);
     if (!r.ok) setError(r.message);
@@ -131,6 +133,8 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
 
       {isPoker ? (
         <p className="muted">🃏 Multiplayer poker — others can join your table. No money: bet & raise in <b>drinks</b>, worst hand at showdown drinks the pot.</p>
+      ) : drinksMode ? (
+        <p className="muted">🍺 Drinks night — no money on the line. Lose and you take a drink, win and you're safe.</p>
       ) : (
         <>
           <p className="muted">Bet from the shared bank (${available.toLocaleString()} available)</p>
@@ -145,7 +149,7 @@ export function GamePicker({ seatId, pub }: { seatId: SeatId; pub: PublicRoomVie
       )}
 
       <button className="btn btn--primary btn--lg btn--block" disabled={busy} onClick={start}>
-        {isPoker ? '🃏 Join the poker table' : `${GAME_ICON[kind]} Deal ${GAME_NAMES[kind]} — $${bet}`}
+        {isPoker ? '🃏 Join the poker table' : drinksMode ? `${GAME_ICON[kind]} Play ${GAME_NAMES[kind]} — loser drinks 🍺` : `${GAME_ICON[kind]} Deal ${GAME_NAMES[kind]} — $${bet}`}
       </button>
       {error && <p className="error">{error}</p>}
     </div>

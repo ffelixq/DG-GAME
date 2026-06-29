@@ -97,6 +97,33 @@ function PhoneLobby({ pub }: { pub: PublicRoomView }) {
       </div>
 
       <div className="card stack">
+        <h2 className="h2">Play for…</h2>
+        <div className="row">
+          <button
+            className={`chip ${pub.mode === 'money' ? 'sel' : ''}`}
+            style={{ flex: 1 }}
+            disabled={!isHost}
+            onClick={() => act('room:setMode', { mode: 'money' })}
+          >
+            💰 Money
+          </button>
+          <button
+            className={`chip ${pub.mode === 'drinks' ? 'sel' : ''}`}
+            style={{ flex: 1 }}
+            disabled={!isHost}
+            onClick={() => act('room:setMode', { mode: 'drinks' })}
+          >
+            🍺 Drinks
+          </button>
+        </div>
+        <p className="muted" style={{ fontSize: '0.78rem' }}>
+          {pub.mode === 'money'
+            ? 'Gamble the shared bank to beat the quota. Losing costs cash, not drinks.'
+            : 'No money — lose a game and you drink, win and you’re safe. (Poker is always drinks.)'}
+        </p>
+      </div>
+
+      <div className="card stack">
         <div className="spread">
           <h2 className="h2">At the table</h2>
           <span className="muted">{pub.seats.length} playing</span>

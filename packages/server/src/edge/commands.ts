@@ -9,6 +9,8 @@ export function commandForEvent(ev: keyof ClientToServerEvents, p: any, deviceId
   switch (ev) {
     case 'device:setBigScreen':
       return { t: 'setBigScreen', deviceId, value: p.value };
+    case 'room:setMode':
+      return { t: 'setMode', deviceId, mode: p.mode };
     case 'seat:add':
       return { t: 'addSeat', deviceId, name: p.name };
     case 'seat:addBot':

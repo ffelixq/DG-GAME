@@ -173,9 +173,13 @@ export interface EndingResult {
   finalForfeitText?: string; // bad ending: one non-alcohol forfeit
 }
 
+/** Room-wide play mode: gamble for money (no game-loss drinks) vs play for drinks (no money). */
+export type RoomMode = 'money' | 'drinks';
+
 export interface RoomState {
   code: RoomCode;
   phase: RoomPhase;
+  mode: RoomMode;
   paused: boolean;
   pauseAccumMs: number;
   pausedAt: number | null;

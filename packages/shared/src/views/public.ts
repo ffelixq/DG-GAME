@@ -1,6 +1,6 @@
 import type { ChoiceId, DeviceId, EventId, FloorId, Money, RoomCode, SeatId, SessionId } from '../ids';
 import type { GameKind } from '../state/game';
-import type { EndingResult, RoomPhase, RoundResult, TickerEntry } from '../state/room';
+import type { EndingResult, RoomMode, RoomPhase, RoundResult, TickerEntry } from '../state/room';
 import type { PublicGameView } from '../games/views';
 
 export interface PublicSeatView {
@@ -61,6 +61,7 @@ export interface PublicRoomView {
   version: number;
   code: RoomCode;
   phase: RoomPhase;
+  mode: RoomMode;
   paused: boolean;
 
   floor: FloorId;

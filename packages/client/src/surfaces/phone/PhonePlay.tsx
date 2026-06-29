@@ -41,13 +41,22 @@ function PhoneTopBar({ pub, onPause }: { pub: PublicRoomView; onPause: () => voi
           </button>
         </span>
       </div>
-      <div className="bank-line" style={{ fontSize: '0.85rem' }}>
-        <span>${bank.toLocaleString()}</span>
-        <span className="quota">quota ${pub.quota.toLocaleString()}</span>
-      </div>
-      <div className="bank-meter" style={{ height: 14 }}>
-        <div className="fill" style={{ width: `${pct}%` }} />
-      </div>
+      {pub.mode === 'drinks' ? (
+        <div className="bank-line" style={{ fontSize: '0.85rem' }}>
+          <span>🍺 Drinks night</span>
+          <span className="quota">lose a game → drink</span>
+        </div>
+      ) : (
+        <>
+          <div className="bank-line" style={{ fontSize: '0.85rem' }}>
+            <span>${bank.toLocaleString()}</span>
+            <span className="quota">quota ${pub.quota.toLocaleString()}</span>
+          </div>
+          <div className="bank-meter" style={{ height: 14 }}>
+            <div className="fill" style={{ width: `${pct}%` }} />
+          </div>
+        </>
+      )}
     </div>
   );
 }
