@@ -559,9 +559,11 @@
   font-size: 1.85rem;
   line-height: 1;
 }
+/* Cards deal FROM their source: --deal-x/--deal-y point back at the draw pile (deck rows set a
+   leftward per-card offset; deck-less hands fall back to "from the dealer above"). */
 @keyframes card-deal {
   from {
-    transform: translateY(-52px) translateX(40px) rotate(-16deg);
+    transform: translateX(var(--deal-x, -10px)) translateY(var(--deal-y, -52px)) rotate(var(--deal-rot, -10deg));
     opacity: 0;
   }
   to {
@@ -652,7 +654,8 @@
   background: rgba(45, 255, 176, 0.15);
   color: var(--lcc-good);
   border: 1px solid rgba(45, 255, 176, 0.45);
-  animation: win-glow 1.4s ease-in-out infinite;
+  /* slide/scale in first (entrance), THEN start the glow loop — don't skip the reveal */
+  animation: lcc-reveal calc(0.35s / var(--anim-speed, 1)) ease-out both, win-glow 1.4s ease-in-out 0.4s infinite;
 }
 .result-banner.loss {
   background: rgba(255, 77, 77, 0.15);
@@ -870,9 +873,9 @@
   border-right: 9px solid transparent;
   border-top: 16px solid var(--lcc-cyan);
   filter: drop-shadow(0 0 6px var(--lcc-cyan));
-  z-index: 3;
+  z-index: 5; /* above the resting ball so the indicator stays visible */
 }
-/* the wheel rotation is now driven by inline transform so it lands on the result */
+/* wheel + ball rotations are driven by inline transforms (SpinControls Wheel) so they land + settle */
 .wheel-ball {
   position: absolute;
   top: 6px;
@@ -883,19 +886,8 @@
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 0 10px #fff;
-}
-.wheel-ball {
-  transition: transform 0.3s ease;
+  transform-origin: 7px 94px; /* concentric with the wheel/hub centre (6 + 94 = 100px) */
   z-index: 4;
-}
-.wheel-ball.orbit {
-  transform-origin: 7px 100px;
-  animation: ball-orbit calc(0.45s / var(--anim-speed, 1)) linear infinite;
-}
-@keyframes ball-orbit {
-  to {
-    transform: rotate(-360deg);
-  }
 }
 .wheel-center {
   position: absolute;
@@ -970,16 +962,18 @@
   filter: blur(1.5px);
 }
 @keyframes reel-spin {
+  /* one FULL 5-symbol set (5 * 84px) downward so the duplicated strip loops seamlessly and
+     scrolls the way a real reel reads (top→bottom), matching the downward settle below */
   from {
-    transform: translateY(0);
+    transform: translateY(-420px);
   }
   to {
-    transform: translateY(-336px); /* 4 symbols * 84px */
+    transform: translateY(0);
   }
 }
 .reel .final {
   font-size: 2.6rem;
-  animation: reel-settle 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  animation: reel-settle calc(0.5s / var(--anim-speed, 1)) cubic-bezier(0.2, 1.6, 0.4, 1) both;
 }
 @keyframes reel-settle {
   0% {
@@ -1007,26 +1001,44 @@
   font-size: 3rem;
   background: radial-gradient(circle at 35% 30%, #fff2c0, var(--lcc-gold) 60%, #c79318);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45), 0 0 26px rgba(255, 210, 63, 0.5), inset 0 -7px 12px rgba(0, 0, 0, 0.3), inset 0 6px 10px rgba(255, 255, 255, 0.5);
-  animation: pop-in 0.4s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  /* the result coin drops in and settles with a little squash, instead of popping from a dot */
+  animation: coin-land calc(0.42s / var(--anim-speed, 1)) cubic-bezier(0.2, 1.2, 0.4, 1) both;
 }
 .coin.flipping {
   animation: coin-flip calc(0.42s / var(--anim-speed, 1)) ease-in-out infinite;
 }
+/* tumble end-over-end (rotateX) with depth, not a flat spin */
 @keyframes coin-flip {
   0% {
-    transform: rotateY(0) translateY(0) scale(1);
+    transform: perspective(600px) rotateX(0) translateY(0) scale(1);
   }
   25% {
-    transform: rotateY(180deg) translateY(-26px) scale(1.12);
+    transform: perspective(600px) rotateX(180deg) translateY(-30px) scale(1.1);
   }
   50% {
-    transform: rotateY(360deg) translateY(0) scale(1);
+    transform: perspective(600px) rotateX(360deg) translateY(0) scale(1);
   }
   75% {
-    transform: rotateY(540deg) translateY(-26px) scale(1.12);
+    transform: perspective(600px) rotateX(540deg) translateY(-30px) scale(1.1);
   }
   100% {
-    transform: rotateY(720deg) translateY(0) scale(1);
+    transform: perspective(600px) rotateX(720deg) translateY(0) scale(1);
+  }
+}
+@keyframes coin-land {
+  0% {
+    transform: translateY(-30px) scale(1.06);
+    opacity: 0.4;
+  }
+  55% {
+    transform: translateY(0) scaleX(1.12) scaleY(0.86);
+  }
+  75% {
+    transform: translateY(-4px) scale(1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
   }
 }
 
@@ -1041,10 +1053,27 @@
 .die {
   display: inline-block;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
-  animation: pop-in 0.4s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+  /* result die drops and settles, instead of popping from a dot */
+  animation: die-settle calc(0.42s / var(--anim-speed, 1)) cubic-bezier(0.2, 1.2, 0.4, 1) both;
 }
 .die.rolling {
-  animation: dice-roll calc(0.4s / var(--anim-speed, 1)) linear infinite;
+  animation: dice-roll calc(0.4s / var(--anim-speed, 1)) ease-in-out infinite; /* ease = gravity */
+}
+@keyframes die-settle {
+  0% {
+    transform: translateY(-24px) scale(1.1);
+    opacity: 0.4;
+  }
+  55% {
+    transform: translateY(0) scaleX(1.15) scaleY(0.82);
+  }
+  75% {
+    transform: translateY(-3px) scale(1);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 @keyframes dice-roll {
   0% {
@@ -1072,16 +1101,30 @@
   overflow: hidden;
   z-index: 45;
 }
+/* outer: falls + spins on Z */
 .confetti-piece {
   position: absolute;
   top: -16px;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+/* inner: holds the colour + sways/tumbles side to side so it flutters instead of dropping straight */
+.confetti-bit {
+  display: block;
   width: 9px;
   height: 14px;
   border-radius: 2px;
   opacity: 0.9;
-  animation-name: confetti-fall;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  animation: confetti-sway ease-in-out infinite alternate;
+}
+@keyframes confetti-sway {
+  from {
+    transform: translateX(calc(-1 * var(--sway, 10px))) rotateX(0deg);
+  }
+  to {
+    transform: translateX(var(--sway, 10px)) rotateX(180deg);
+  }
 }
 @keyframes confetti-fall {
   0% {

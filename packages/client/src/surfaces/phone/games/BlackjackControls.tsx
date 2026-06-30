@@ -1,6 +1,7 @@
 import type { GameAction, PrivateGameView, PublicRoomView, ResultSummary, SeatId } from '@lcc/shared';
 import { useConn } from '../../../net/connection';
-import { Deck, PlayingCard } from '../../../ui/PlayingCard';
+import { Deck, Hand, PlayingCard } from '../../../ui/PlayingCard';
+import { getAnimSpeed } from '../../../ui/anim';
 
 type BJ = Extract<PrivateGameView, { kind: 'blackjack' }>;
 
@@ -11,17 +12,23 @@ export function BlackjackControls({ seatId, view, result, pub }: { seatId: SeatI
   const done = view.phase === 'done';
   const name = (id: SeatId) => pub.seats.find((s) => s.seatId === id)?.name ?? '??';
 
+  const speed = getAnimSpeed();
   return (
-    <div className={`game-area ${done ? 'reveal' : ''}`}>
-      {/* dealer + draw pile */}
+    <div className="game-area">
+      {/* dealer + draw pile (cards deal off the deck; the hole card flips in place at showdown) */}
       <div className="hand-row">
         <span className="label">Dealer{done ? '' : view.dealer.length ? ' shows' : ''}</span>
         <span className="hand" style={{ alignItems: 'flex-start' }}>
           <Deck />
-          {view.dealer.map((c, i) => (
-            <PlayingCard key={i} card={c} className={done && i >= 1 ? 'flip' : ''} delayMs={Math.min(i, 4) * 95} />
-          ))}
-          {view.dealerHidden && <PlayingCard key="hole" hidden delayMs={95} />}
+          {view.dealer.length > 0 && (
+            <>
+              <PlayingCard key="up" card={view.dealer[0]} deckOffset={0} />
+              {/* stable element: hidden while playing, flips face-up when revealed */}
+              <PlayingCard key="hole" card={view.dealerHidden ? undefined : view.dealer[1]} hidden={view.dealerHidden} deckOffset={1} delayMs={95 / speed} />
+              {!view.dealerHidden &&
+                view.dealer.slice(2).map((c, i) => <PlayingCard key={`d${i}`} card={c} deckOffset={i + 2} delayMs={(Math.min(i + 2, 4) * 95) / speed} />)}
+            </>
+          )}
         </span>
       </div>
 
@@ -30,11 +37,7 @@ export function BlackjackControls({ seatId, view, result, pub }: { seatId: SeatI
         <span className="label">
           You — <span className="total-badge">{view.total}{view.soft ? ' (soft)' : ''}</span>
         </span>
-        <span className="hand">
-          {view.hole.map((c, i) => (
-            <PlayingCard key={i} card={c} delayMs={Math.min(i, 4) * 95} />
-          ))}
-        </span>
+        <Hand cards={view.hole} />
       </div>
 
       {view.phase === 'joining' && (

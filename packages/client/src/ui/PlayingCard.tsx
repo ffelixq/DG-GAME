@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { SUIT_SYMBOL, type Card } from '@lcc/shared';
 import { getAnimSpeed } from './anim';
 
@@ -6,17 +7,28 @@ export function PlayingCard({
   hidden,
   className = '',
   delayMs = 0,
+  deckOffset,
 }: {
   card?: Card;
   hidden?: boolean;
   className?: string;
   delayMs?: number;
+  /** Position of this card relative to the draw pile on its left — makes the deal slide out OF the deck. */
+  deckOffset?: number;
 }) {
   const faceUp = !hidden && !!card;
   const red = card ? card.suit === 'H' || card.suit === 'D' : false;
   const sym = card ? SUIT_SYMBOL[card.suit] : '';
+  const style: Record<string, string | number> = {};
+  if (delayMs) style.animationDelay = `${delayMs}ms`;
+  if (deckOffset !== undefined) {
+    // slide out of the deck (to the left): card 0 hops one card-width, later cards travel farther
+    style['--deal-x'] = `${-(deckOffset + 1) * 52}px`;
+    style['--deal-y'] = '-6px';
+    style['--deal-rot'] = '-4deg';
+  }
   return (
-    <span className={`pcard ${className}`} style={delayMs ? { animationDelay: `${delayMs}ms` } : undefined}>
+    <span className={`pcard ${className}`} style={style as CSSProperties}>
       <span className={`pcard-inner ${faceUp ? 'up' : ''}`}>
         <span className="pcard-face pcard-back" aria-hidden="true" />
         <span className={`pcard-face pcard-front ${red ? 'red' : ''}`}>
@@ -53,12 +65,24 @@ export function Deck({ label = 'DECK' }: { label?: string }) {
   );
 }
 
-/** Renders a hand with a one-by-one "dealing" stagger (capped so late hits don't lag). */
-export function Hand({ cards, hideFrom }: { cards: Card[]; hideFrom?: number }) {
+/**
+ * Renders a hand with a one-by-one "dealing" stagger.
+ * - `fromDeck`: cards slide out of a draw pile sitting to their left.
+ * - `dealtFrom`: index where the newest batch starts, so an incremental single deal (a hit / the
+ *   turn / the river) starts its stagger at 0 instead of inheriting the whole row's offset.
+ */
+export function Hand({ cards, hideFrom, fromDeck, dealtFrom = 0 }: { cards: Card[]; hideFrom?: number; fromDeck?: boolean; dealtFrom?: number }) {
+  const speed = getAnimSpeed();
   return (
     <span className="hand">
       {cards.map((c, i) => (
-        <PlayingCard key={i} card={c} hidden={hideFrom !== undefined && i >= hideFrom} delayMs={(Math.min(i, 4) * 95) / getAnimSpeed()} />
+        <PlayingCard
+          key={i}
+          card={c}
+          hidden={hideFrom !== undefined && i >= hideFrom}
+          delayMs={(Math.min(Math.max(i - dealtFrom, 0), 4) * 95) / speed}
+          deckOffset={fromDeck ? i : undefined}
+        />
       ))}
     </span>
   );

@@ -40,8 +40,8 @@ export interface Conn {
   act: (ev: string, payload: unknown) => void;
   pushToast: (tone: TickerTone, text: string) => void;
   dismissToast: (id: number) => void;
-  /** Freeze the displayed bank for a moment so a spin's result isn't spoiled before the reveal. */
-  freezeBank: () => void;
+  /** Freeze the displayed bank for `ms` so a spin's result isn't spoiled before the reveal. */
+  freezeBank: (ms?: number) => void;
   bankFreeze: { until: number; value: number } | null;
   reset: () => void;
 }
@@ -139,8 +139,8 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
         });
       },
       pushToast,
-      freezeBank() {
-        setBankFreeze({ until: Date.now() + 2300, value: pub?.bank ?? 0 });
+      freezeBank(ms = 2300) {
+        setBankFreeze({ until: Date.now() + ms, value: pub?.bank ?? 0 });
       },
       bankFreeze,
       dismissToast(id: number) {

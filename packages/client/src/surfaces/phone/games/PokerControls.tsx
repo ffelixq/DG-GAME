@@ -12,8 +12,10 @@ export function PokerControls({ seatId, view, result, pub }: { seatId: SeatId; v
   const done = view.phase === 'done';
   const name = (id: SeatId) => pub.seats.find((s) => s.seatId === id)?.name ?? '??';
 
+  // each street's new community cards start their deal stagger at 0 (no inherited lag)
+  const communityDealtFrom = view.street === 'turn' ? 3 : view.street === 'river' ? 4 : 0;
   return (
-    <div className={`game-area ${done ? 'reveal' : ''}`}>
+    <div className="game-area">
       {/* pot of drinks */}
       <div className="poker-pot">
         <span className="pot-label">POT</span>
@@ -26,7 +28,11 @@ export function PokerControls({ seatId, view, result, pub }: { seatId: SeatId; v
         <span className="label">Board · {STREET[view.street]}</span>
         <span className="hand" style={{ alignItems: 'flex-start' }}>
           <Deck />
-          {view.community.length > 0 ? <Hand cards={view.community} /> : <span className="muted" style={{ alignSelf: 'center' }}>— flop, turn, river —</span>}
+          {view.community.length > 0 ? (
+            <Hand cards={view.community} fromDeck dealtFrom={communityDealtFrom} />
+          ) : (
+            <span className="muted" style={{ alignSelf: 'center' }}>— flop, turn, river —</span>
+          )}
         </span>
       </div>
 

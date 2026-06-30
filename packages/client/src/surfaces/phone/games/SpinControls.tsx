@@ -21,14 +21,19 @@ function landRotation(prev: number, color?: string, num?: number): number {
 
 function Wheel({ spinning, result }: { spinning: boolean; result?: { number: number; color: string } }) {
   const [rot, setRot] = useState(0);
+  const [ballRot, setBallRot] = useState(0);
   useEffect(() => {
-    if (spinning) setRot((prev) => landRotation(prev, result?.color, result?.number));
+    if (spinning) {
+      setRot((prev) => landRotation(prev, result?.color, result?.number));
+      setBallRot((prev) => prev - (TURNS + 3) * 360); // counter-clockwise, decelerating to rest at the top pocket
+    }
   }, [spinning, result?.number, result?.color]);
   const tone = result?.color === 'red' ? '#ff6b6b' : result?.color === 'green' ? 'var(--lcc-good)' : '#fff';
+  const dur = SPIN_BASE_MS / getAnimSpeed();
   return (
     <div className="wheel-wrap">
-      <div className="wheel" style={{ transform: `rotate(${rot}deg)`, transition: spinning ? `transform ${SPIN_BASE_MS / getAnimSpeed()}ms cubic-bezier(0.15, 0.62, 0.18, 1)` : 'none' }} />
-      <div className={`wheel-ball ${spinning ? 'orbit' : ''}`} />
+      <div className="wheel" style={{ transform: `rotate(${rot}deg)`, transition: spinning ? `transform ${dur}ms cubic-bezier(0.15, 0.62, 0.18, 1)` : 'none' }} />
+      <div className="wheel-ball" style={{ transform: `rotate(${ballRot}deg)`, transition: spinning ? `transform ${dur}ms cubic-bezier(0.12, 0.7, 0.2, 1)` : 'none' }} />
       {!spinning && result && (
         <div className="wheel-center">
           <span className="num" style={{ color: tone }}>
@@ -81,7 +86,8 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
   useEffect(() => () => clearTimeout(timer.current), []);
 
   function spin() {
-    freezeBank(); // hold the bank meter steady until the wheel/reels reveal
+    // hold the bank meter steady until ~just after the wheel/reels reveal (scaled to anim speed)
+    freezeBank(SPIN_BASE_MS / getAnimSpeed() + 400);
     setSpinning(true);
     void act('game:action', { seatId, action: { kind: 'spin' } });
     timer.current = setTimeout(() => setSpinning(false), SPIN_BASE_MS / getAnimSpeed());
@@ -152,7 +158,9 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
           ) : stage === 'result' && dice ? (
             <>
               <span className="die">{DICE[dice[0]]}</span>
-              <span className="die">{DICE[dice[1]]}</span>
+              <span className="die" style={{ animationDelay: `${100 / getAnimSpeed()}ms` }}>
+                {DICE[dice[1]]}
+              </span>
             </>
           ) : (
             <>
@@ -233,9 +241,9 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
           <span className="label">You vs Dealer</span>
           <span className="hand" style={{ alignItems: 'flex-start' }}>
             <Deck />
-            {stage === 'result' && res ? <PlayingCard card={res.player} /> : <PlayingCard hidden />}
+            <PlayingCard card={stage === 'result' && res ? res.player : undefined} hidden={!(stage === 'result' && res)} deckOffset={0} />
             <span style={{ alignSelf: 'center', fontWeight: 800 }}>vs</span>
-            {stage === 'result' && res ? <PlayingCard card={res.dealer} /> : <PlayingCard hidden />}
+            <PlayingCard card={stage === 'result' && res ? res.dealer : undefined} hidden={!(stage === 'result' && res)} deckOffset={1} delayMs={95 / getAnimSpeed()} />
           </span>
         </div>
         {stage === 'bet' && (
