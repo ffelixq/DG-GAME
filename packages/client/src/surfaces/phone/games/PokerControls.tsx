@@ -27,7 +27,7 @@ export function PokerControls({ seatId, view, result, pub }: { seatId: SeatId; v
       <div className="hand-row">
         <span className="label">Board · {STREET[view.street]}</span>
         <span className="hand" style={{ alignItems: 'flex-start' }}>
-          <Deck />
+          <Deck dealt={view.community.length + view.hole.length} />
           {view.community.length > 0 ? (
             <Hand cards={view.community} fromDeck dealtFrom={communityDealtFrom} />
           ) : (
@@ -93,7 +93,7 @@ export function PokerControls({ seatId, view, result, pub }: { seatId: SeatId; v
 
       {done && result && (
         <>
-          <div className={`result-banner result-big reveal ${result.won ? 'win' : 'loss'}`}>{result.text}</div>
+          <div className={`result-banner result-big reveal-late ${result.won ? 'win' : 'loss'}`}>{result.text}</div>
           <button className="btn btn--cyan btn--block" onClick={() => send('game:dismiss', { seatId })}>
             ← Back to games
           </button>

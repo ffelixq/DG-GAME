@@ -51,14 +51,17 @@ export function PlayingCard({
   );
 }
 
-/** A visible draw pile the cards are dealt from. */
-export function Deck({ label = 'DECK' }: { label?: string }) {
+/** A visible draw pile the cards are dealt from; it thins out and peels a card off the top as cards leave. */
+export function Deck({ label = 'DECK', dealt = 0 }: { label?: string; dealt?: number }) {
+  const remaining = Math.max(2, 5 - dealt);
   return (
     <span className="deck" aria-hidden="true" title="Draw pile">
       <span className="deck-stack">
-        {[0, 1, 2, 3].map((i) => (
+        {Array.from({ length: remaining }, (_, i) => (
           <span key={i} className="deck-card" style={{ transform: `translate(${i * 1.5}px, ${-i * 1.5}px)` }} />
         ))}
+        {/* keyed by `dealt` so a fresh card peels off the top on every deal */}
+        {dealt > 0 && <span key={`peel-${dealt}`} className="deck-card deck-peel" />}
       </span>
       <span className="deck-label">{label}</span>
     </span>

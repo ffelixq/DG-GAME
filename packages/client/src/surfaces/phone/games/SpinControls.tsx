@@ -68,7 +68,7 @@ function ResultBanner({ result, onAgain, onBack }: { result: ResultSummary | nul
   if (!result) return null;
   return (
     <>
-      <div className={`result-banner reveal ${result.won ? 'win' : 'loss'}`}>{result.text}</div>
+      <div className={`result-banner reveal-late ${result.won ? 'win' : 'loss'}`}>{result.text}</div>
       <button className="btn btn--primary btn--lg btn--block" onClick={onAgain}>
         🔄 Play again
       </button>
@@ -123,7 +123,7 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
         {stage === 'spin' && <p className="muted">No more bets…</p>}
         {stage === 'result' && (
           <>
-            {result && <div className={`result-banner reveal ${result.won ? 'win' : 'loss'}`}>{result.text}</div>}
+            {result && <div className={`result-banner reveal-late ${result.won ? 'win' : 'loss'}`}>{result.text}</div>}
             <p className="muted">Spin again — pick your bet:</p>
             <div className="row" style={{ flexWrap: 'wrap', justifyContent: 'center' }}>
               <button className="chip" onClick={() => respinWith({ kind: 'rb', color: 'red' })}>
@@ -180,7 +180,7 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
         {stage === 'spin' && <p className="muted">Rolling…</p>}
         {stage === 'result' && dice && (
           <>
-            <p className="total-badge">= {dice[0] + dice[1]}</p>
+            <p className="total-badge reveal-late">= {dice[0] + dice[1]}</p>
             <ResultBanner result={result} onAgain={again} onBack={back} />
           </>
         )}
@@ -202,7 +202,7 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
         {stage === 'spin' && <p className="muted">Flipping…</p>}
         {stage === 'result' && (
           <>
-            <p className="total-badge">{flipped?.toUpperCase()}</p>
+            <p className="total-badge reveal-late">{flipped?.toUpperCase()}</p>
             <ResultBanner result={result} onAgain={again} onBack={back} />
           </>
         )}
@@ -240,7 +240,7 @@ export function SpinControls({ seatId, view, result }: { seatId: SeatId; view: S
         <div className="hand-row">
           <span className="label">You vs Dealer</span>
           <span className="hand" style={{ alignItems: 'flex-start' }}>
-            <Deck />
+            <Deck dealt={stage === 'result' && res ? 2 : 0} />
             <PlayingCard card={stage === 'result' && res ? res.player : undefined} hidden={!(stage === 'result' && res)} deckOffset={0} />
             <span style={{ alignSelf: 'center', fontWeight: 800 }}>vs</span>
             <PlayingCard card={stage === 'result' && res ? res.dealer : undefined} hidden={!(stage === 'result' && res)} deckOffset={1} delayMs={95 / getAnimSpeed()} />

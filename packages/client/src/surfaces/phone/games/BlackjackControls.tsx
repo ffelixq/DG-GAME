@@ -19,7 +19,7 @@ export function BlackjackControls({ seatId, view, result, pub }: { seatId: SeatI
       <div className="hand-row">
         <span className="label">Dealer{done ? '' : view.dealer.length ? ' shows' : ''}</span>
         <span className="hand" style={{ alignItems: 'flex-start' }}>
-          <Deck />
+          <Deck dealt={view.dealer.length + view.hole.length} />
           {view.dealer.length > 0 && (
             <>
               <PlayingCard key="up" card={view.dealer[0]} deckOffset={0} />
@@ -78,7 +78,7 @@ export function BlackjackControls({ seatId, view, result, pub }: { seatId: SeatI
 
       {done && result && (
         <>
-          <div className={`result-banner result-big reveal ${result.won ? 'win' : 'loss'}`}>{result.text}</div>
+          <div className={`result-banner result-big reveal-late ${result.won ? 'win' : 'loss'}`}>{result.text}</div>
           <button className="btn btn--cyan btn--block" onClick={() => send('game:dismiss', { seatId })}>
             ← Go back
           </button>
